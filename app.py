@@ -10,8 +10,8 @@ st.markdown("This dashboard is under active development. Below is a preview of l
 # Load eBird and weather data
 @st.cache_data
 def load_data():
-    ebird = pd.read_csv("data/ebird_data.csv")
-    weather = pd.read_csv("data/weather_data.csv")
+    ebird = pd.read_csv("ebird_data.csv")
+    weather = pd.read_csv("weather_data.csv")
     return ebird, weather
 
 ebird_df, weather_df = load_data()
