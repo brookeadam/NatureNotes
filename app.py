@@ -10,13 +10,12 @@ st.title("📊 Nature Notes Dashboard")
 st.markdown("Welcome to the Headwaters Nature Notes Dashboard! This tool combines eBird species observation data and weather trends from the Headwaters at Incarnate Word to explore seasonal patterns, biodiversity, and more.")
 
 # Load data
-DATA_PATH = Path("data")
-EBIRD_FILE = DATA_PATH / "ebird_data.csv"
-WEATHER_FILE = DATA_PATH / "weather_data.csv"
+EBIRD_FILE = Path("ebird_data.csv")
+WEATHER_FILE = Path("weather_data.csv")
 
 # Check if data files exist
 if not EBIRD_FILE.exists() or not WEATHER_FILE.exists():
-    st.warning("🛠️ Data files not found. Please upload `ebird_data.csv` and `weather_data.csv` to the `data/` folder.")
+    st.warning("🛠️ Data files not found. Please upload `ebird_data.csv` and `weather_data.csv` to the root of your repo.")
 else:
     ebird_df = pd.read_csv(EBIRD_FILE)
     weather_df = pd.read_csv(WEATHER_FILE)
