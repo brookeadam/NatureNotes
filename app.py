@@ -1,7 +1,5 @@
-
 import streamlit as st
 import pandas as pd
-import altair as alt
 from pathlib import Path
 
 st.set_page_config(page_title="Nature Notes Dashboard", layout="wide")
@@ -11,17 +9,17 @@ st.title("📊 Nature Notes Dashboard")
 st.markdown("Welcome to the Headwaters Nature Notes Dashboard! This tool combines eBird species observation data and weather trends from the Headwaters at Incarnate Word to explore seasonal patterns, biodiversity, and more.")
 
 # Load data
-EBIRD_FILE = Path("ebird_data.csv")
-WEATHER_FILE = Path("weather_data.csv")
+EBIRD_FILE = "ebird_data.csv"
+WEATHER_FILE = "weather_data.csv"
 
 # Check if data files exist
-if not EBIRD_FILE.exists() or not WEATHER_FILE.exists():
-    st.warning("🛠️ Data files not found. Please upload `ebird_data.csv` and `weather_data.csv` to the root of the app.")
+if not Path(EBIRD_FILE).exists() or not Path(WEATHER_FILE).exists():
+    st.warning("🛠️ Data files not found. Please upload `ebird_data.csv` and `weather_data.csv` to the main directory.")
 else:
     ebird_df = pd.read_csv(EBIRD_FILE)
     weather_df = pd.read_csv(WEATHER_FILE)
 
-    # Format dates
+    # Convert date columns to datetime
     ebird_df['observation_date'] = pd.to_datetime(ebird_df['observation_date'])
     weather_df['Date'] = pd.to_datetime(weather_df['Date'])
 
@@ -29,12 +27,13 @@ else:
     min_date = ebird_df['observation_date'].min()
     max_date = ebird_df['observation_date'].max()
     date_range = st.date_input("Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
-
     start_date, end_date = date_range
-    filtered_ebird = ebird_df[(ebird_df['observation_date'] >= pd.to_datetime(start_date)) & (ebird_df['observation_date'] <= pd.to_datetime(end_date))]
-    filtered_weather = weather_df[(weather_df['date'] >= pd.to_datetime(start_date)) & (weather_df['date'] <= pd.to_datetime(end_date))]
 
-    # Summary
+    # Filter data by date range
+    filtered_ebird = ebird_df[(ebird_df['observation_date'] >= pd.to_datetime(start_date)) & (ebird_df['observation_date'] <= pd.to_datetime(end_date))]
+    filtered_weather = weather_df[(weather_df['Date'] >= pd.to_datetime(start_date)) & (weather_df['Date'] <= pd.to_datetime(end_date))]
+
+    # Summary metrics
     st.subheader("Summary")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -47,37 +46,21 @@ else:
     st.divider()
 
     # Visualizations
-    st.subheader("📈 Observations Over Time")
-    obs_chart = alt.Chart(filtered_ebird.groupby('observation_date').size().reset_index(name="observations")).mark_line().encode(
-        x='observation_date:T',
-        y='observations:Q',
-        tooltip=['observation_date:T', 'observations:Q']
-    ).properties(width="container", height=300)
-    st.altair_chart(obs_chart, use_container_width=True)
+    st.subheader("Species vs. Temperature Over Time")
 
-    st.subheader("🌡️ Temperature Trends")
-    temp_chart = alt.Chart(filtered_weather).mark_line().encode(
-        x='date:T',
-        y='avg_temp:Q',
-        tooltip=['date:T', 'avg_temp:Q']
-    ).properties(width="container", height=300)
-    st.altair_chart(temp_chart, use_container_width=True)
+    chart_data = pd.merge(
+        filtered_ebird.groupby('observation_date')['common_name'].nunique().reset_index(name="Unique Species"),
+        filtered_weather[['Date', 'Max Temp (F)', 'Min Temp (F)']],
+        left_on='observation_date', right_on='Date', how='left'
+    ).dropna()
 
-    st.subheader("🦋 Top Observed Species")
-    top_species = filtered_ebird['common_name'].value_counts().nlargest(10).reset_index()
-    top_species.columns = ['Species', 'Count']
-    species_chart = alt.Chart(top_species).mark_bar().encode(
-        x=alt.X('Count:Q'),
-        y=alt.Y('Species:N', sort='-x'),
-        tooltip=['Species:N', 'Count:Q']
-    ).properties(width="container", height=300)
-    st.altair_chart(species_chart, use_container_width=True)
+    st.line_chart(chart_data.set_index("observation_date"))
 
     st.divider()
 
-    # Export button
+    # Download filtered eBird data
     st.download_button(
-        label="📥 Download Filtered Data (CSV)",
+        label="📥 Download Filtered eBird Data (CSV)",
         data=filtered_ebird.to_csv(index=False),
         file_name="filtered_ebird_data.csv",
         mime="text/csv"
