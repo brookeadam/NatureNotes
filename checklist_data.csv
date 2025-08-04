@@ -1,0 +1,5 @@
+location_id,checklist_id,observation_date,common_name,scientific_name,count
+L1210588,S12345678,2025-08-01,Northern Cardinal,Cardinalis cardinalis,3
+L1210588,S12345679,2025-08-01,Blue Jay,Cyanocitta cristata,2
+L1210849,S22345678,2025-08-02,Northern Cardinal,Cardinalis cardinalis,4
+L1210849,S22345679,2025-08-02,Mourning Dove,Zenaida macroura,1
