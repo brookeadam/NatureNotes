@@ -23,7 +23,7 @@ else:
 
     # Format dates
     ebird_df['observation_date'] = pd.to_datetime(ebird_df['observation_date'])
-    weather_df['date'] = pd.to_datetime(weather_df['date'])
+    weather_df['Date'] = pd.to_datetime(weather_df['Date'])
 
     # Date range selector
     min_date = ebird_df['observation_date'].min()
