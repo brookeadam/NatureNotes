@@ -7,7 +7,7 @@ from pathlib import Path
 st.set_page_config(page_title="Nature Notes Dashboard", layout="wide")
 
 # Title and Description
-st.title("ðŸ“Š Nature Notes Dashboard")
+st.title("📊 Nature Notes Dashboard")
 st.markdown("Welcome to the Headwaters Nature Notes Dashboard! This tool combines eBird species observation data and weather trends from the Headwaters at Incarnate Word to explore seasonal patterns, biodiversity, and more.")
 
 # Load data
@@ -16,7 +16,7 @@ WEATHER_FILE = Path("weather_data.csv")
 
 # Check if data files exist
 if not EBIRD_FILE.exists() or not WEATHER_FILE.exists():
-    st.warning("ðŸ› ï¸ Data files not found. Please upload `ebird_data.csv` and `weather_data.csv` to the root of the app.")
+    st.warning("🛠️ Data files not found. Please upload `ebird_data.csv` and `weather_data.csv` to the root of the app.")
 else:
     ebird_df = pd.read_csv(EBIRD_FILE)
     weather_df = pd.read_csv(WEATHER_FILE)
@@ -47,7 +47,7 @@ else:
     st.divider()
 
     # Visualizations
-    st.subheader("ðŸ“ˆ Observations Over Time")
+    st.subheader("📈 Observations Over Time")
     obs_chart = alt.Chart(filtered_ebird.groupby('observation_date').size().reset_index(name="observations")).mark_line().encode(
         x='observation_date:T',
         y='observations:Q',
@@ -55,7 +55,7 @@ else:
     ).properties(width="container", height=300)
     st.altair_chart(obs_chart, use_container_width=True)
 
-    st.subheader("ðŸŒ¡ï¸ Temperature Trends")
+    st.subheader("🌡️ Temperature Trends")
     temp_chart = alt.Chart(filtered_weather).mark_line().encode(
         x='date:T',
         y='avg_temp:Q',
@@ -63,7 +63,7 @@ else:
     ).properties(width="container", height=300)
     st.altair_chart(temp_chart, use_container_width=True)
 
-    st.subheader("ðŸ¦‹ Top Observed Species")
+    st.subheader("🦋 Top Observed Species")
     top_species = filtered_ebird['common_name'].value_counts().nlargest(10).reset_index()
     top_species.columns = ['Species', 'Count']
     species_chart = alt.Chart(top_species).mark_bar().encode(
@@ -77,7 +77,7 @@ else:
 
     # Export button
     st.download_button(
-        label="ðŸ“¥ Download Filtered Data (CSV)",
+        label="📥 Download Filtered Data (CSV)",
         data=filtered_ebird.to_csv(index=False),
         file_name="filtered_ebird_data.csv",
         mime="text/csv"
