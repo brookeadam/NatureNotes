@@ -1,53 +1,59 @@
-import pandas as pd
+import os
 import requests
-from datetime import datetime, timedelta
-from pathlib import Path
+import pandas as pd
+from datetime import datetime
+from dotenv import load_dotenv
 
-# === CONFIGURATION ===
-EBIRD_API_KEY = "c49o0js5vkjb"
-LOC_IDS = ["L1210588", "L1210849"]
+# Load environment variables (make sure you add EBIRD_API_KEY to GitHub Secrets)
+load_dotenv()
+
+EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
 CSV_FILE = "historical_checklists.csv"
-DAYS_LOOKBACK = 7  # Fetch data from the last week
 
-headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-new_rows = []
+# Headwaters at Incarnate Word location IDs
+LOCATION_IDS = ["L1210588", "L1210849"]
 
-for loc_id in LOC_IDS:
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/recent?back={DAYS_LOOKBACK}"
+# Function to fetch recent checklists from a location
+def fetch_checklists(loc_id):
+    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic"
+    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     response = requests.get(url, headers=headers)
-    
     if response.status_code == 200:
-        data = response.json()
-        for obs in data:
-            new_rows.append({
-                "speciesCode": obs.get("speciesCode"),
-                "comName": obs.get("comName"),
-                "sciName": obs.get("sciName"),
-                "locId": obs.get("locId"),
-                "locName": obs.get("locName"),
-                "obsDt": obs.get("obsDt"),
-                "howMany": obs.get("howMany"),
-                "lat": obs.get("lat"),
-                "lng": obs.get("lng"),
-                "obsValid": obs.get("obsValid"),
-                "obsReviewed": obs.get("obsReviewed"),
-                "locationPrivate": obs.get("locationPrivate"),
-                "subId": obs.get("subId")
-            })
+        return response.json()
     else:
         print(f"Failed to fetch data for {loc_id}: {response.status_code}")
+        return []
 
-# Load historical data
-df_old = pd.read_csv(CSV_FILE, encoding='ISO-8859-1')
+# Load existing historical data with encoding fallback
+try:
+    df_old = pd.read_csv(CSV_FILE)
+except UnicodeDecodeError:
+    df_old = pd.read_csv(CSV_FILE, encoding="ISO-8859-1")
 
-# Create new DataFrame and ensure obsDt is parsed
-df_new = pd.DataFrame(new_rows)
-df_new["obsDt"] = pd.to_datetime(df_new["obsDt"])
-df_old["obsDt"] = pd.to_datetime(df_old["obsDt"])
+# Fetch new checklists for both locations
+all_obs = []
+for loc in LOCATION_IDS:
+    obs = fetch_checklists(loc)
+    all_obs.extend(obs)
 
-# Only keep truly new rows (not duplicates)
-df_combined = pd.concat([df_old, df_new]).drop_duplicates(subset=["subId"]).sort_values(by="obsDt")
+# Convert to DataFrame
+df_new = pd.DataFrame(all_obs)
 
-# Save updated CSV
-df_combined.to_csv(CSV_FILE, index=False)
-print("✅ Checklist data updated.")
+# If empty, avoid crashing
+if df_new.empty:
+    print("No new observations found.")
+else:
+    # Normalize date format
+    df_new["obsDt"] = pd.to_datetime(df_new["obsDt"], errors="coerce")
+    df_old["obsDt"] = pd.to_datetime(df_old["obsDt"], errors="coerce")
+
+    # Merge and remove duplicates by unique obsID (or checklist ID if available)
+    combined = pd.concat([df_old, df_new], ignore_index=True)
+    if "obsId" in combined.columns:
+        combined.drop_duplicates(subset="obsId", inplace=True)
+    elif "subId" in combined.columns:
+        combined.drop_duplicates(subset="subId", inplace=True)
+
+    # Save updated file
+    combined.to_csv(CSV_FILE, index=False, encoding="utf-8")
+    print("Checklist successfully updated and saved.")
