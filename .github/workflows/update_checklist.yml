@@ -1,33 +1,36 @@
-name: Update eBird Checklist
+name: Update eBird Checklists
 
 on:
   schedule:
-    - cron: '0 4 * * 1,4'  # Mondays and Thursdays at 4:00 UTC
-  workflow_dispatch:       # Allows manual triggering
+    # Runs at 5am UTC every Monday and Thursday
+    - cron: '0 5 * * 1,4'
+  workflow_dispatch:  # allows manual triggering
 
 jobs:
-  update:
+  update-checklists:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Install dependencies
-      run: pip install pandas requests
+      - name: Install dependencies
+        run: pip install pandas python-dotenv requests
 
-    - name: Run update script
-      run: python update_checklist.py
+      - name: Run checklist update script
+        env:
+          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
+        run: python update_checklist.py
 
-    - name: Commit changes
-      run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
-        git add historical_checklists.csv
-        git commit -m "Auto-update checklist data [skip ci]" || echo "No changes to commit"
-        git push
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add historical_checklists.csv
+          git commit -m "Auto-update checklist data from eBird" || echo "No changes to commit"
+          git push
