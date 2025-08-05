@@ -38,7 +38,7 @@ for loc_id in LOC_IDS:
         print(f"Failed to fetch data for {loc_id}: {response.status_code}")
 
 # Load historical data
-df_old = pd.read_csv(CSV_FILE)
+df_old = pd.read_csv(CSV_FILE, encoding='ISO-8859-1')
 
 # Create new DataFrame and ensure obsDt is parsed
 df_new = pd.DataFrame(new_rows)
