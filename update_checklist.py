@@ -2,58 +2,75 @@ import os
 import requests
 import pandas as pd
 from datetime import datetime
-from dotenv import load_dotenv
 
-# Load environment variables (make sure you add EBIRD_API_KEY to GitHub Secrets)
-load_dotenv()
+# Define your locations
+LOCATIONS = ["L1210588", "L1210849"]
+EBIRD_API_KEY = os.environ["EBIRD_API_KEY"]
+CSV_FILENAME = "historical_checklists.csv"
 
-EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
-CSV_FILE = "historical_checklists.csv"
-
-# Headwaters at Incarnate Word location IDs
-LOCATION_IDS = ["L1210588", "L1210849"]
-
-# Function to fetch recent checklists from a location
-def fetch_checklists(loc_id):
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic"
+def fetch_ebird_checklists(loc_id, back_days=30):
+    url = f"https://api.ebird.org/v2/product/obs/{loc_id}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()
+    params = {"back": back_days}
+    response = requests.get(url, headers=headers, params=params)
+    response.raise_for_status()
+    return response.json()
+
+def process_checklists(data, loc_id):
+    processed = []
+    for obs in data:
+        processed.append({
+            "speciesCode": obs.get("speciesCode"),
+            "comName": obs.get("comName"),
+            "sciName": obs.get("sciName"),
+            "obsDt": obs.get("obsDt"),
+            "howMany": obs.get("howMany"),
+            "locId": loc_id,
+            "locName": obs.get("locName"),
+            "obsValid": obs.get("obsValid"),
+            "obsReviewed": obs.get("obsReviewed"),
+            "locationPrivate": obs.get("locationPrivate"),
+            "subId": obs.get("subId")
+        })
+    return pd.DataFrame(processed)
+
+def load_existing_data(csv_path):
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path, dtype=str)
+    return pd.DataFrame()
+
+def save_updated_data(df, csv_path):
+    df.to_csv(csv_path, index=False)
+
+def main():
+    print("Fetching and updating checklists...")
+
+    all_new_data = []
+
+    for loc_id in LOCATIONS:
+        try:
+            print(f"Fetching data for {loc_id}...")
+            raw_data = fetch_ebird_checklists(loc_id)
+            df = process_checklists(raw_data, loc_id)
+            all_new_data.append(df)
+        except Exception as e:
+            print(f"Failed to fetch data for {loc_id}: {e}")
+
+    if all_new_data:
+        new_data = pd.concat(all_new_data, ignore_index=True)
+        new_data.drop_duplicates(subset=["subId", "speciesCode"], inplace=True)
+
+        print("Loading existing data...")
+        existing_data = load_existing_data(CSV_FILENAME)
+
+        combined = pd.concat([existing_data, new_data], ignore_index=True)
+        combined.drop_duplicates(subset=["subId", "speciesCode"], inplace=True)
+
+        print(f"Saving updated data to {CSV_FILENAME}...")
+        save_updated_data(combined, CSV_FILENAME)
+        print("Checklist update complete.")
     else:
-        print(f"Failed to fetch data for {loc_id}: {response.status_code}")
-        return []
+        print("No new data to add.")
 
-# Load existing historical data with encoding fallback
-try:
-    df_old = pd.read_csv(CSV_FILE)
-except UnicodeDecodeError:
-    df_old = pd.read_csv(CSV_FILE, encoding="ISO-8859-1")
-
-# Fetch new checklists for both locations
-all_obs = []
-for loc in LOCATION_IDS:
-    obs = fetch_checklists(loc)
-    all_obs.extend(obs)
-
-# Convert to DataFrame
-df_new = pd.DataFrame(all_obs)
-
-# If empty, avoid crashing
-if df_new.empty:
-    print("No new observations found.")
-else:
-    # Normalize date format
-    df_new["obsDt"] = pd.to_datetime(df_new["obsDt"], errors="coerce")
-    df_old["obsDt"] = pd.to_datetime(df_old["obsDt"], errors="coerce")
-
-    # Merge and remove duplicates by unique obsID (or checklist ID if available)
-    combined = pd.concat([df_old, df_new], ignore_index=True)
-    if "obsId" in combined.columns:
-        combined.drop_duplicates(subset="obsId", inplace=True)
-    elif "subId" in combined.columns:
-        combined.drop_duplicates(subset="subId", inplace=True)
-
-    # Save updated file
-    combined.to_csv(CSV_FILE, index=False, encoding="utf-8")
-    print("Checklist successfully updated and saved.")
+if __name__ == "__main__":
+    main()
