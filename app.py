@@ -27,9 +27,15 @@ def detect_encoding(file_path):
     return chardet.detect(raw_data)['encoding']
 
 def load_checklist():
-    encoding = detect_encoding(CHECKLIST_PATH)
-    return pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
+    # Try to auto-detect encoding using chardet
+    try:
+        with open(CHECKLIST_PATH, 'rb') as rawfile:
+            result = chardet.detect(rawfile.read(10000))
+            encoding = result['encoding'] if result['confidence'] > 0.5 else 'utf-8-sig'
+    except Exception:
+        encoding = 'utf-8-sig'  # Safe fallback encoding
 
+    return pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
 def get_weather_data(start, end):
     data = Daily(WEATHER_LOCATION, start, end)
     data = data.fetch()
