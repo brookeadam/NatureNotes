@@ -9,3 +9,4 @@ seaborn
 datetime
 plotly.express
 meteostat
+chardet
