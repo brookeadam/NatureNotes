@@ -144,7 +144,7 @@ st.markdown("""
 """)
 
 
-✅ app.py has been updated with all current logic and layout as requested, including:
+app.py has been updated with all current logic and layout as requested, including:
 
 Real-time checklist and weather loading
 
