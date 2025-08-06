@@ -17,7 +17,7 @@ st.set_page_config(
 
 # Constants
 LOCATION_IDS = ["L1210588", "L1210849"]
-CHECKLIST_PATH = "data/checklist.csv"
+CHECKLIST_PATH = "historical_checklists.csv"
 WEATHER_LOCATION = Point(29.4657, -98.4738)  # Headwaters coordinates
 
 # Helper Functions
