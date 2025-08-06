@@ -3,7 +3,7 @@ name: Update eBird Checklist
 on:
   schedule:
     - cron: '0 6 * * 1,4'  # At 6:00 AM UTC every Monday and Thursday
-  workflow_dispatch:       # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
   update-checklist:
