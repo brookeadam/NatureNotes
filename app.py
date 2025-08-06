@@ -1,135 +1,145 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from meteostat import Point, Daily
+import altair as alt
+import requests
+from meteostat import Daily, Point
 from datetime import datetime
-import pytz
-import os
-from PIL import Image
 import chardet
+import os
 
-# Set page config
+# ──────────────────────────────────────────────
+# App Config
+# ──────────────────────────────────────────────
 st.set_page_config(
-    page_title="Nature Notes at Headwaters",
+    page_title="Nature Notes – Headwaters",
+    page_icon="🪶",
     layout="wide",
-    initial_sidebar_state="expanded"
 )
 
-# Constants
-LOCATION_IDS = ["L1210588", "L1210849"]
-CHECKLIST_PATH = "historical_checklists.csv"
-WEATHER_LOCATION = Point(29.4657, -98.4738)  # Headwaters coordinates
+st.title("📖 Nature Notes – Headwaters Dashboard")
+st.caption("Powered by real-time bird sightings and weather trends")
 
-# Helper Functions
+# ──────────────────────────────────────────────
+# Constants & Paths
+# ──────────────────────────────────────────────
+LOCATION_IDS = ["L1210588", "L1210849"]  # Headwaters locations
+eBIRD_API_KEY = os.getenv("EBIRD_API_KEY", "c49o0js5vkjb")
+CHECKLIST_PATH = "historical_checklists.csv"
+CITY_COORDS = Point(29.4658, -98.4684)  # San Antonio, TX
+
+# ──────────────────────────────────────────────
+# Auto-Detect Encoding
+# ──────────────────────────────────────────────
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
-        raw_data = f.read(10000)
-    return chardet.detect(raw_data)['encoding']
+        result = chardet.detect(f.read())
+    return result['encoding']
 
+# ──────────────────────────────────────────────
+# Load Historical eBird Checklist
+# ──────────────────────────────────────────────
 def load_checklist():
-    # Try to auto-detect encoding using chardet
-    try:
-        with open(CHECKLIST_PATH, 'rb') as rawfile:
-            result = chardet.detect(rawfile.read(10000))
-            encoding = result['encoding'] if result['confidence'] > 0.5 else 'utf-8-sig'
-    except Exception:
-        encoding = 'utf-8-sig'  # Safe fallback encoding
-
+    encoding = detect_encoding(CHECKLIST_PATH)
     return pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
-def get_weather_data(start, end):
-    data = Daily(WEATHER_LOCATION, start, end)
-    data = data.fetch()
-    return data
-
-def filter_data_by_date(df, start_date, end_date):
-    return df[(df["OBSERVATION DATE"] >= start_date) & (df["OBSERVATION DATE"] <= end_date)]
-
-def display_species_summary(df):
-    species_counts = df["COMMON NAME"].value_counts()
-    st.subheader("🕊️ Species Observed")
-    st.metric("Unique Species", len(species_counts))
-    st.bar_chart(species_counts.head(10))
-    return species_counts
-
-def display_weather_summary(weather):
-    st.subheader("🌤️ Weather Summary")
-    st.line_chart(weather[["tavg", "tmin", "tmax"]])
-    st.dataframe(weather.describe())
-
-def display_comparison(df, weather):
-    st.subheader("📊 Compare Two Time Periods")
-    col1, col2 = st.columns(2)
-    with col1:
-        start1 = st.date_input("Start Date 1", df["OBSERVATION DATE"].min())
-        end1 = st.date_input("End Date 1", df["OBSERVATION DATE"].max())
-    with col2:
-        start2 = st.date_input("Start Date 2", df["OBSERVATION DATE"].min())
-        end2 = st.date_input("End Date 2", df["OBSERVATION DATE"].max())
-
-    df1 = filter_data_by_date(df, start1, end1)
-    df2 = filter_data_by_date(df, start2, end2)
-    wx1 = get_weather_data(start1, end1)
-    wx2 = get_weather_data(start2, end2)
-
-    st.markdown("### 📅 Time Period 1")
-    sp1 = display_species_summary(df1)
-    display_weather_summary(wx1)
-
-    st.markdown("### 📅 Time Period 2")
-    sp2 = display_species_summary(df2)
-    display_weather_summary(wx2)
-
-    st.markdown("### 🔍 Comparison Table")
-    comparison_df = pd.DataFrame({
-        "Period 1": sp1,
-        "Period 2": sp2
-    }).fillna(0).astype(int)
-    comparison_df["Change"] = comparison_df["Period 2"] - comparison_df["Period 1"]
-    st.dataframe(comparison_df.sort_values("Change", ascending=False))
-
-# Sidebar Filters
-st.sidebar.header("🔎 Filter Data")
-data_toggle = st.sidebar.radio("View Mode", ["Date Range", "Year-to-Date", "All-Time"], index=0)
 
 df = load_checklist()
-start = df["OBSERVATION DATE"].min()
-end = df["OBSERVATION DATE"].max()
 
-tz = pytz.timezone("America/Chicago")
-today = datetime.now(tz).date()
+# ──────────────────────────────────────────────
+# Load Historical Weather Data from Meteostat
+# ──────────────────────────────────────────────
+def load_weather_data(start_date, end_date):
+    data = Daily(CITY_COORDS, start=start_date, end=end_date)
+    data = data.fetch().reset_index()
+    return data
 
-if data_toggle == "Date Range":
-    start_date = st.sidebar.date_input("Start Date", start)
-    end_date = st.sidebar.date_input("End Date", end)
-elif data_toggle == "Year-to-Date":
-    start_date = datetime(today.year, 1, 1).date()
+# ──────────────────────────────────────────────
+# Date Filters
+# ──────────────────────────────────────────────
+st.sidebar.header("🔎 Filter Data")
+view_mode = st.sidebar.radio("View Mode", ["Date Range", "Year-to-Date", "All-Time"])
+
+today = datetime.today()
+
+if view_mode == "Date Range":
+    date_range = st.sidebar.date_input("Select Range", [df["OBSERVATION DATE"].min(), today])
+    start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
+elif view_mode == "Year-to-Date":
+    start_date = datetime(today.year, 1, 1)
     end_date = today
 else:
-    start_date = start
-    end_date = end
+    start_date = df["OBSERVATION DATE"].min()
+    end_date = today
 
-filtered_df = filter_data_by_date(df, start_date, end_date)
-weather_data = get_weather_data(start_date, end_date)
+# ──────────────────────────────────────────────
+# Filter Data by Date
+# ──────────────────────────────────────────────
+df_filtered = df[(df["OBSERVATION DATE"] >= start_date) & (df["OBSERVATION DATE"] <= end_date)]
+weather_df = load_weather_data(start_date, end_date)
 
-# Main Layout
-st.title("🌿 Nature Notes at Headwaters")
-st.caption("Real-time bird sightings and weather insights from Headwaters at Incarnate Word.")
+# ──────────────────────────────────────────────
+# Summary Stats
+# ──────────────────────────────────────────────
+st.subheader("📊 Summary")
+col1, col2 = st.columns(2)
 
-# Species and Weather Dashboards
-col1, col2 = st.columns([2, 1])
-with col1:
-    species_counts = display_species_summary(filtered_df)
-with col2:
-    display_weather_summary(weather_data)
+species_count = df_filtered["COMMON NAME"].nunique()
+observation_count = df_filtered.shape[0]
 
-# Comparison Tool
-with st.expander("🔄 Compare Two Date Ranges"):
-    display_comparison(df, weather_data)
+col1.metric("Unique Species", species_count)
+col2.metric("Total Observations", observation_count)
 
-# Footer
-st.markdown("""
----
-**Headwaters at Incarnate Word**  
-A sanctuary in the heart of San Antonio. This dashboard is made possible through partnership with the Headwaters team and powered by real-time eBird and weather data.  
-**Nature Notes by Brooke Adam** | Designed by Brooke Adam and Kraken Security Operations
-""")
+# ──────────────────────────────────────────────
+# Daily Observations Chart
+# ──────────────────────────────────────────────
+df_daily = df_filtered.groupby("OBSERVATION DATE")["COMMON NAME"].nunique().reset_index()
+df_daily.columns = ["Date", "Unique Species"]
+
+st.subheader("🗓️ Daily Unique Species Count")
+chart = alt.Chart(df_daily).mark_line().encode(
+    x="Date:T",
+    y="Unique Species:Q"
+).properties(width=800, height=300)
+
+st.altair_chart(chart, use_container_width=True)
+
+# ──────────────────────────────────────────────
+# Weather Trend Chart
+# ──────────────────────────────────────────────
+st.subheader("🌤️ Temperature Trends")
+
+if not weather_df.empty:
+    temp_chart = alt.Chart(weather_df).transform_fold(
+        ["tavg", "tmin", "tmax"],
+        as_=["Temperature Type", "Temperature"]
+    ).mark_line().encode(
+        x="time:T",
+        y="Temperature:Q",
+        color="Temperature Type:N"
+    ).properties(width=800, height=300)
+
+    st.altair_chart(temp_chart, use_container_width=True)
+else:
+    st.info("No weather data available for the selected range.")
+
+# ──────────────────────────────────────────────
+# Checklist Table Preview
+# ──────────────────────────────────────────────
+st.subheader("📋 Recent Bird Observations")
+st.dataframe(df_filtered.sort_values("OBSERVATION DATE", ascending=False).head(20), use_container_width=True)
+
+# ──────────────────────────────────────────────
+# Footer: Branding, Mission, and Credits
+# ──────────────────────────────────────────────
+st.markdown("---")
+st.markdown(
+    """
+    <div style='text-align: center; font-size: 0.9em; color: #666;'>
+        <p><strong>Nature Notes</strong> is a community-driven bird and weather dashboard for the Headwaters at Incarnate Word.<br>
+        Powered by real-time eBird data and local weather trends.<br><br>
+        Developed in partnership with <a href="https://www.uiw.edu/headwaters/" target="_blank">The Headwaters at Incarnate Word</a> and <a href="https://krakencollective.org" target="_blank">Kraken Collective</a>.<br>
+        Built by Brooke Adam. Run by Kraken Security Operations.<br>
+        Built with ❤️ for environmental awareness and education.</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
