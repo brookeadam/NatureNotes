@@ -1,158 +1,129 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import requests
-from datetime import datetime, timedelta
-from meteostat import Daily, Point
+from meteostat import Point, Daily
+from datetime import datetime
+import pytz
+import os
+from PIL import Image
+import chardet
 
-# --- Configuration ---
-CHECKLIST_PATH = "historical_checklists.csv"
-EBIRD_LOCATION_IDS = ["L1210588", "L1210849"]
-HEADWATERS_COORDS = (29.4654, -98.4736)  # San Antonio
-DEFAULT_TZ = "US/Central"
-
+# Set page config
 st.set_page_config(
-    page_title="Nature Notes – Headwaters at Incarnate Word",
+    page_title="Nature Notes at Headwaters",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
-<style>
-body {
-    background-color: #f3f2ef;
-    color: #3e3e3e;
-    font-family: 'Arial', sans-serif;
-}
-</style>
-""", unsafe_allow_html=True)
+# Constants
+LOCATION_IDS = ["L1210588", "L1210849"]
+CHECKLIST_PATH = "data/checklist.csv"
+WEATHER_LOCATION = Point(29.4657, -98.4738)  # Headwaters coordinates
 
-# --- Load Data ---
-@st.cache_data
+# Helper Functions
+def detect_encoding(file_path):
+    with open(file_path, 'rb') as f:
+        raw_data = f.read(10000)
+    return chardet.detect(raw_data)['encoding']
 
 def load_checklist():
-    return pd.read_csv(CHECKLIST_PATH, encoding="utf-8-sig", parse_dates=["OBSERVATION DATE"])
+    encoding = detect_encoding(CHECKLIST_PATH)
+    return pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
 
-df = load_checklist()
-
-# --- Sidebar Filters ---
-st.sidebar.header("Select Date Range")
-date_options = ["Today", "Last 7 Days", "This Month", "This Season", "Year-to-Date", "All-Time", "Custom Range"]
-date_selection = st.sidebar.radio("", date_options)
-
-now = datetime.now()
-
-if date_selection == "Today":
-    start_date = end_date = now.date()
-elif date_selection == "Last 7 Days":
-    start_date = now.date() - timedelta(days=6)
-    end_date = now.date()
-elif date_selection == "This Month":
-    start_date = now.replace(day=1).date()
-    end_date = now.date()
-elif date_selection == "This Season":
-    month = now.month
-    if month in [12, 1, 2]:
-        start_date = datetime(now.year if month != 12 else now.year - 1, 12, 1).date()
-    elif month in [3, 4, 5]:
-        start_date = datetime(now.year, 3, 1).date()
-    elif month in [6, 7, 8]:
-        start_date = datetime(now.year, 6, 1).date()
-    else:
-        start_date = datetime(now.year, 9, 1).date()
-    end_date = now.date()
-elif date_selection == "Year-to-Date":
-    start_date = datetime(now.year, 1, 1).date()
-    end_date = now.date()
-elif date_selection == "All-Time":
-    start_date = df["OBSERVATION DATE"].min().date()
-    end_date = df["OBSERVATION DATE"].max().date()
-else:
-    start_date = st.sidebar.date_input("Start Date", value=now.date() - timedelta(days=30))
-    end_date = st.sidebar.date_input("End Date", value=now.date())
-
-mask = (df["OBSERVATION DATE"].dt.date >= start_date) & (df["OBSERVATION DATE"].dt.date <= end_date)
-df_filtered = df[mask]
-
-# --- Weather Data (Live) ---
 def get_weather_data(start, end):
-    location = Point(HEADWATERS_COORDS[0], HEADWATERS_COORDS[1], 200)
-    data = Daily(location, start, end)
+    data = Daily(WEATHER_LOCATION, start, end)
     data = data.fetch()
-    data.reset_index(inplace=True)
     return data
 
-weather_df = get_weather_data(start_date, end_date)
+def filter_data_by_date(df, start_date, end_date):
+    return df[(df["OBSERVATION DATE"] >= start_date) & (df["OBSERVATION DATE"] <= end_date)]
 
-# --- Bird Counts ---
-species_counts = df_filtered.groupby("COMMON NAME")["OBSERVATION COUNT"].sum().sort_values(ascending=False)
-total_species = species_counts.shape[0]
-total_birds = species_counts.sum()
+def display_species_summary(df):
+    species_counts = df["COMMON NAME"].value_counts()
+    st.subheader("🕊️ Species Observed")
+    st.metric("Unique Species", len(species_counts))
+    st.bar_chart(species_counts.head(10))
+    return species_counts
 
-st.title("🪶 Nature Notes – Headwaters at Incarnate Word")
-st.caption("Live updates from Headwaters at Incarnate Word using eBird and local weather records.")
+def display_weather_summary(weather):
+    st.subheader("🌤️ Weather Summary")
+    st.line_chart(weather[["tavg", "tmin", "tmax"]])
+    st.dataframe(weather.describe())
 
-st.metric("Unique Species Observed", total_species)
-st.metric("Total Bird Count", total_birds)
+def display_comparison(df, weather):
+    st.subheader("📊 Compare Two Time Periods")
+    col1, col2 = st.columns(2)
+    with col1:
+        start1 = st.date_input("Start Date 1", df["OBSERVATION DATE"].min())
+        end1 = st.date_input("End Date 1", df["OBSERVATION DATE"].max())
+    with col2:
+        start2 = st.date_input("Start Date 2", df["OBSERVATION DATE"].min())
+        end2 = st.date_input("End Date 2", df["OBSERVATION DATE"].max())
 
-# --- Plots ---
-st.subheader("Bird Counts by Species")
-st.bar_chart(species_counts.head(20))
+    df1 = filter_data_by_date(df, start1, end1)
+    df2 = filter_data_by_date(df, start2, end2)
+    wx1 = get_weather_data(start1, end1)
+    wx2 = get_weather_data(start2, end2)
 
-st.subheader("Temperature Trend")
-if not weather_df.empty:
-    st.line_chart(weather_df.set_index("time")["tavg"])
+    st.markdown("### 📅 Time Period 1")
+    sp1 = display_species_summary(df1)
+    display_weather_summary(wx1)
+
+    st.markdown("### 📅 Time Period 2")
+    sp2 = display_species_summary(df2)
+    display_weather_summary(wx2)
+
+    st.markdown("### 🔍 Comparison Table")
+    comparison_df = pd.DataFrame({
+        "Period 1": sp1,
+        "Period 2": sp2
+    }).fillna(0).astype(int)
+    comparison_df["Change"] = comparison_df["Period 2"] - comparison_df["Period 1"]
+    st.dataframe(comparison_df.sort_values("Change", ascending=False))
+
+# Sidebar Filters
+st.sidebar.header("🔎 Filter Data")
+data_toggle = st.sidebar.radio("View Mode", ["Date Range", "Year-to-Date", "All-Time"], index=0)
+
+df = load_checklist()
+start = df["OBSERVATION DATE"].min()
+end = df["OBSERVATION DATE"].max()
+
+tz = pytz.timezone("America/Chicago")
+today = datetime.now(tz).date()
+
+if data_toggle == "Date Range":
+    start_date = st.sidebar.date_input("Start Date", start)
+    end_date = st.sidebar.date_input("End Date", end)
+elif data_toggle == "Year-to-Date":
+    start_date = datetime(today.year, 1, 1).date()
+    end_date = today
 else:
-    st.warning("No weather data available for the selected range.")
+    start_date = start
+    end_date = end
 
-# --- Comparison Tool ---
-st.header("📊 Compare Two Timeframes")
-col1, col2 = st.columns(2)
+filtered_df = filter_data_by_date(df, start_date, end_date)
+weather_data = get_weather_data(start_date, end_date)
 
+# Main Layout
+st.title("🌿 Nature Notes at Headwaters")
+st.caption("Real-time bird sightings and weather insights from Headwaters at Incarnate Word.")
+
+# Species and Weather Dashboards
+col1, col2 = st.columns([2, 1])
 with col1:
-    st.markdown("**Timeframe A**")
-    a_start = st.date_input("Start A", value=now.date() - timedelta(days=60), key="a_start")
-    a_end = st.date_input("End A", value=now.date() - timedelta(days=45), key="a_end")
-
+    species_counts = display_species_summary(filtered_df)
 with col2:
-    st.markdown("**Timeframe B**")
-    b_start = st.date_input("Start B", value=now.date() - timedelta(days=30), key="b_start")
-    b_end = st.date_input("End B", value=now.date() - timedelta(days=15), key="b_end")
+    display_weather_summary(weather_data)
 
-# Get data for A
-mask_a = (df["OBSERVATION DATE"].dt.date >= a_start) & (df["OBSERVATION DATE"].dt.date <= a_end)
-df_a = df[mask_a]
-species_a = df_a.groupby("COMMON NAME")["OBSERVATION COUNT"].sum()
-weather_a = get_weather_data(a_start, a_end)
+# Comparison Tool
+with st.expander("🔄 Compare Two Date Ranges"):
+    display_comparison(df, weather_data)
 
-# Get data for B
-mask_b = (df["OBSERVATION DATE"].dt.date >= b_start) & (df["OBSERVATION DATE"].dt.date <= b_end)
-df_b = df[mask_b]
-species_b = df_b.groupby("COMMON NAME")["OBSERVATION COUNT"].sum()
-weather_b = get_weather_data(b_start, b_end)
-
-comparison = pd.DataFrame({
-    "Timeframe A": species_a,
-    "Timeframe B": species_b
-}).fillna(0).astype(int).sort_values(by="Timeframe A", ascending=False)
-
-st.subheader("Species Count Comparison")
-st.dataframe(comparison)
-
-st.subheader("Temperature Comparison")
-fig, ax = plt.subplots()
-ax.plot(weather_a["time"], weather_a["tavg"], label="A")
-ax.plot(weather_b["time"], weather_b["tavg"], label="B")
-ax.set_ylabel("Average Temp (°C)")
-ax.set_xlabel("Date")
-ax.legend()
-st.pyplot(fig)
-
-# --- Footer ---
+# Footer
 st.markdown("""
-<hr style="margin-top: 3em;">
-<p style="font-size: 0.9em; color: #666;">
-Nature Notes is a project of Headwaters at Incarnate Word. Data sourced from eBird and Meteostat.
-</p>
-""", unsafe_allow_html=True)
+---
+**Headwaters at Incarnate Word**  
+A sanctuary in the heart of San Antonio. This dashboard is made possible through partnership with the Headwaters team and powered by real-time eBird and weather data.  
+**Nature Notes by Brooke Adam** | Designed by Brooke Adam and Kraken Security Operations
+""")
