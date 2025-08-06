@@ -1,119 +1,83 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
-import datetime as dt
+import matplotlib.pyplot as plt
+from datetime import datetime
 import os
 
-# ----------------------------
-# Configuration
-# ----------------------------
+# Constants
+CHECKLIST_PATH = "historical_checklists.csv"
+
+# App Configuration
 st.set_page_config(
     page_title="Nature Notes – Headwaters at Incarnate Word",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("🪶 Nature Notes – Headwaters at Incarnate Word")
-st.markdown("""
-Live updates from Headwaters at Incarnate Word using eBird and local weather records.
-""")
+st.caption("Live updates from Headwaters at Incarnate Word using eBird and local weather records.")
 
-CHECKLIST_PATH = "historical_checklists.csv"
-
-# ----------------------------
-# Load and Clean Checklist Data
-# ----------------------------
+# Data loading
 @st.cache_data
 def load_checklist():
-    df = pd.read_csv(CHECKLIST_PATH, parse_dates=["OBSERVATION DATE"])
-    df.rename(columns={"OBSERVATION DATE": "obsDt"}, inplace=True)
-
-    # Drop unnecessary columns like unnamed/empty trailing ones
-    df = df.loc[:, ~df.columns.str.contains("^Unnamed|^Column1$", case=False)]
-    
-    # Optional: Normalize column names (strip whitespace)
-    df.columns = df.columns.str.strip()
-
-    return df
+    return pd.read_csv(CHECKLIST_PATH, encoding="utf-8", parse_dates=["OBSERVATION DATE"])
 
 df = load_checklist()
 
-# ----------------------------
 # Sidebar Filters
-# ----------------------------
-st.sidebar.header("Filter Observations")
+with st.sidebar:
+    st.header("Filters")
+    years = sorted(df["OBSERVATION DATE"].dt.year.unique())
+    selected_year = st.selectbox("Year", options=years, index=len(years)-1)
 
-min_date = df["obsDt"].min().date()
-max_date = df["obsDt"].max().date()
-default_start = max_date - dt.timedelta(days=30)
+    months = {
+        1: "January", 2: "February", 3: "March", 4: "April",
+        5: "May", 6: "June", 7: "July", 8: "August",
+        9: "September", 10: "October", 11: "November", 12: "December"
+    }
 
-date_range = st.sidebar.date_input(
-    "Date Range",
-    value=(default_start, max_date),
-    min_value=min_date,
-    max_value=max_date
-)
+    selected_month = st.selectbox("Month", options=months.keys(), format_func=lambda x: months[x])
 
-selected_species = st.sidebar.multiselect(
-    "Filter by Common Name",
-    sorted(df["COMMON NAME"].unique()),
-    default=None
-)
+# Filter data
+df_filtered = df[
+    (df["OBSERVATION DATE"].dt.year == selected_year) &
+    (df["OBSERVATION DATE"].dt.month == selected_month)
+]
 
-# ----------------------------
-# Apply Filters
-# ----------------------------
-filtered_df = df.copy()
+# Summary stats
+st.subheader(f"📊 Summary for {months[selected_month]} {selected_year}")
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("Unique Species", df_filtered["COMMON NAME"].nunique())
+with col2:
+    st.metric("Total Observations", df_filtered["OBSERVATION COUNT"].sum())
 
-if date_range:
-    start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-    filtered_df = filtered_df[
-        (filtered_df["obsDt"] >= start_date) & (filtered_df["obsDt"] <= end_date)
-    ]
-
-if selected_species:
-    filtered_df = filtered_df[filtered_df["COMMON NAME"].isin(selected_species)]
-
-# ----------------------------
-# Display Summary
-# ----------------------------
-st.subheader("Recent Bird Observations")
-
-summary = filtered_df.groupby("COMMON NAME")["OBSERVATION COUNT"].sum().reset_index()
-summary = summary.sort_values("OBSERVATION COUNT", ascending=False)
-
-st.dataframe(summary, use_container_width=True)
-
-# ----------------------------
-# Visualize Sightings Over Time
-# ----------------------------
-st.subheader("Sightings Over Time")
-
-time_chart_data = (
-    filtered_df.groupby(["obsDt", "COMMON NAME"])["OBSERVATION COUNT"]
+# Species Table
+st.subheader("📋 Species Observed")
+species_summary = (
+    df_filtered.groupby("COMMON NAME")["OBSERVATION COUNT"]
     .sum()
     .reset_index()
+    .sort_values(by="OBSERVATION COUNT", ascending=False)
+)
+st.dataframe(species_summary, use_container_width=True)
+
+# Time series visualization
+st.subheader("📈 Observations Over Time")
+time_series = (
+    df_filtered.groupby("OBSERVATION DATE")["OBSERVATION COUNT"]
+    .sum()
+    .reset_index()
+    .sort_values("OBSERVATION DATE")
 )
 
-if not time_chart_data.empty:
-    chart = alt.Chart(time_chart_data).mark_line().encode(
-        x="obsDt:T",
-        y="OBSERVATION COUNT:Q",
-        color="COMMON NAME:N",
-        tooltip=["obsDt:T", "COMMON NAME:N", "OBSERVATION COUNT:Q"]
-    ).properties(
-        width=800,
-        height=400
-    )
-    st.altair_chart(chart, use_container_width=True)
-else:
-    st.info("No data available for the selected filters.")
+fig, ax = plt.subplots()
+ax.plot(time_series["OBSERVATION DATE"], time_series["OBSERVATION COUNT"], marker="o")
+ax.set_xlabel("Date")
+ax.set_ylabel("Total Observations")
+ax.set_title(f"Daily Observation Counts – {months[selected_month]} {selected_year}")
+ax.grid(True)
+st.pyplot(fig)
 
-# ----------------------------
-# Footer / Acknowledgment
-# ----------------------------
-st.markdown("""
----
-**Nature Notes Dashboard**  
-Data from [eBird](https://ebird.org/) • Project by Headwaters at Incarnate Word  
-Created with ❤️ by Brooke Adam using Streamlit
-""")
+# Footer / Acknowledgments
+st.markdown("---")
+st.caption("📍 Powered by [eBird](https://ebird.org) and real-time weather integration. Data visualized for Headwaters at Incarnate Word.")
