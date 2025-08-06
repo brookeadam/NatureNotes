@@ -1,163 +1,134 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.express as px
 import requests
 import datetime
-import os
-from io import BytesIO
+from io import StringIO
 from PIL import Image
 
-# ---------------------------
-# CONFIGURATION
-# ---------------------------
-EBIRD_LOCATIONS = ["L1210588", "L1210849"]
-EBIRD_API_KEY = st.secrets["EBIRD_API_KEY"]
-WEATHER_PATH = "data/weather.csv"
-CHECKLIST_PATH = "data/headwaters_ebird.csv"
+# === CONFIG ===
+st.set_page_config(page_title="Nature Notes – Headwaters", layout="wide")
+st.title("🪶 Nature Notes – Headwaters at Incarnate Word")
+st.markdown("_Live updates from Headwaters at Incarnate Word using eBird and local weather records._")
 
-# ---------------------------
-# DATA LOADING
-# ---------------------------
+# === CONSTANTS ===
+CHECKLIST_PATH = "historical_checklists.csv"
+WEATHER_URL = "https://archive-api.open-meteo.com/v1/archive"
+LATITUDE = 29.4649
+LONGITUDE = -98.4693
+EBIRD_LOC_IDS = ["L1210588", "L1210849"]
+EBIRD_API_KEY = "c49o0js5vkjb"
+
+# === HELPERS ===
 @st.cache_data
-
 def load_checklist():
-    return pd.read_csv(CHECKLIST_PATH, encoding_errors="replace", parse_dates=["OBSERVATION DATE"])
+    return pd.read_csv(CHECKLIST_PATH, encoding="utf-8", parse_dates=["OBSERVATION DATE"])
 
 @st.cache_data
-
-def load_weather():
-    return pd.read_csv(WEATHER_PATH, parse_dates=["date"])
+def get_weather_data(start_date, end_date):
+    params = {
+        "latitude": LATITUDE,
+        "longitude": LONGITUDE,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "daily": ["temperature_2m_min", "temperature_2m_max", "precipitation_sum"],
+        "timezone": "auto"
+    }
+    r = requests.get(WEATHER_URL, params=params)
+    r.raise_for_status()
+    data = r.json()
+    return pd.DataFrame({
+        "date": data["daily"]["time"],
+        "temp_min": data["daily"]["temperature_2m_min"],
+        "temp_max": data["daily"]["temperature_2m_max"],
+        "precip": data["daily"]["precipitation_sum"],
+    })
 
 @st.cache_data
-
-def get_species_image(species_name):
+def get_species_image(common_name):
+    search_url = f"https://api.ebird.org/v2/ref/media/obs/{common_name.replace(' ', '%20')}"
+    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     try:
-        url = f"https://api.ebird.org/v2/ref/media/{species_name}?format=json"
-        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-        r = requests.get(url, headers=headers)
-        data = r.json()
-        if data and "media" in data[0]:
-            return data[0]["media"][0]["url"]
+        r = requests.get(search_url, headers=headers)
+        if r.ok:
+            results = r.json()
+            for item in results:
+                if "assets" in item and item["assets"]:
+                    return item["assets"][0].get("url")
     except:
         return None
+    return None
 
-# ---------------------------
-# UI LAYOUT
-# ---------------------------
-st.set_page_config(
-    page_title="Nature Notes – Headwaters",
-    layout="wide",
-    initial_sidebar_state="expanded"
+# === DATE SELECTION ===
+today = datetime.date.today()
+season_start = datetime.date(today.year, 3, 1) if today.month < 6 else datetime.date(today.year, 6, 1)
+date_filter = st.sidebar.radio(
+    "Select Date Range",
+    ["Today", "Last 7 Days", "This Month", "This Season", "Custom Range"]
 )
 
-st.title("🪶 Nature Notes – Headwaters at Incarnate Word")
-st.caption("Live updates from Headwaters at Incarnate Word using eBird and local weather records.")
+if date_filter == "Today":
+    start_date = end_date = today
+elif date_filter == "Last 7 Days":
+    start_date = today - datetime.timedelta(days=6)
+    end_date = today
+elif date_filter == "This Month":
+    start_date = today.replace(day=1)
+    end_date = today
+elif date_filter == "This Season":
+    start_date = season_start
+    end_date = today
+else:
+    start_date = st.sidebar.date_input("Start Date", value=today - datetime.timedelta(days=7))
+    end_date = st.sidebar.date_input("End Date", value=today)
 
-# ---------------------------
-# SIDEBAR FILTERS
-# ---------------------------
-today = datetime.date.today()
+# === LOAD DATA ===
+df = load_checklist()
+df = df[(df["OBSERVATION DATE"] >= pd.to_datetime(start_date)) & (df["OBSERVATION DATE"] <= pd.to_datetime(end_date))]
 
-with st.sidebar:
-    st.header("📅 Date Filter")
-    date_filter = st.selectbox("Select a date filter:", ["Today", "Last 7 Days", "This Month", "This Season", "Custom Range"])
-
-    if date_filter == "Today":
-        start_date = end_date = today
-    elif date_filter == "Last 7 Days":
-        start_date = today - datetime.timedelta(days=7)
-        end_date = today
-    elif date_filter == "This Month":
-        start_date = today.replace(day=1)
-        end_date = today
-    elif date_filter == "This Season":
-        month = today.month
-        if month in [12, 1, 2]:  # Winter
-            start_date = datetime.date(today.year if month != 12 else today.year - 1, 12, 1)
-        elif month in [3, 4, 5]:  # Spring
-            start_date = datetime.date(today.year, 3, 1)
-        elif month in [6, 7, 8]:  # Summer
-            start_date = datetime.date(today.year, 6, 1)
-        else:  # Fall
-            start_date = datetime.date(today.year, 9, 1)
-        end_date = today
-    else:
-        start_date = st.date_input("Start date", today - datetime.timedelta(days=14))
-        end_date = st.date_input("End date", today)
-
-# ---------------------------
-# LOAD DATA
-# ---------------------------
-checklist_df = load_checklist()
-weather_df = load_weather()
-
-# ---------------------------
-# FILTER DATA BY DATE
-# ---------------------------
-checklist_filtered = checklist_df[(checklist_df["OBSERVATION DATE"] >= pd.to_datetime(start_date)) & (checklist_df["OBSERVATION DATE"] <= pd.to_datetime(end_date))]
-weather_filtered = weather_df[(weather_df["date"] >= pd.to_datetime(start_date)) & (weather_df["date"] <= pd.to_datetime(end_date))]
-
-# ---------------------------
-# DISPLAY SUMMARY STATS
-# ---------------------------
-unique_species = checklist_filtered['COMMON NAME'].nunique()
-total_birds = checklist_filtered['how_many'].fillna(1).sum()
-
+# === METRICS ===
+species_count = df["COMMON NAME"].nunique()
+total_birds = df["OBSERVATION COUNT"].sum()
+st.markdown("### 📊 Summary Metrics")
 col1, col2 = st.columns(2)
-col1.metric("🌿 Number of Species Observed", unique_species)
-col2.metric("🐦 Total Bird Count", int(total_birds))
+col1.metric("Unique Species Observed", species_count)
+col2.metric("Total Bird Count", total_birds)
 
-# ---------------------------
-# WEATHER CHARTS
-# ---------------------------
-st.subheader("📈 Weather Overview")
-fig = px.line(weather_filtered, x='date', y=['tempmax', 'tempmin'], title="Daily Max/Min Temperatures")
+# === WEATHER CHART ===
+weather_df = get_weather_data(start_date, end_date)
+fig = px.line(
+    weather_df,
+    x="date",
+    y=["temp_min", "temp_max"],
+    title="📈 Temperature Range",
+    labels={"value": "°C", "date": "Date"},
+)
 st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------------
-# SPECIES LIST W/ IMAGES
-# ---------------------------
-st.subheader("🦉 Birds Seen During Selected Date Range")
+# === SPECIES LIST ===
+st.markdown("### 🐦 Species Observed")
+grouped = df.groupby("COMMON NAME").agg({
+    "OBSERVATION COUNT": "sum",
+    "SCIENTIFIC NAME": "first"
+}).reset_index().sort_values("OBSERVATION COUNT", ascending=False)
 
-for species in checklist_filtered['COMMON NAME'].unique():
-    sightings = checklist_filtered[checklist_filtered['COMMON NAME'] == species]
-    count = sightings['how_many'].fillna(1).sum()
-    with st.expander(f"{species} – {int(count)} observed"):
-        img_url = get_species_image(species)
+for _, row in grouped.iterrows():
+    with st.expander(f"{row['COMMON NAME']} ({int(row['OBSERVATION COUNT'])} birds)"):
+        st.markdown(f"_Scientific name_: **{row['SCIENTIFIC NAME']}**")
+        img_url = get_species_image(row["COMMON NAME"])
         if img_url:
-            st.image(img_url, width=200)
-        st.dataframe(sightings[["OBSERVATION DATE", "OBSERVER ID", "LOCATION", "how_many"]])
+            st.image(img_url, width=300, caption=row["COMMON NAME"])
 
-# ---------------------------
-# FUTURE TOOLS (PLACEHOLDERS)
-# ---------------------------
-st.subheader("🧪 Experimental Tools")
-st.info("Comparison tool and weather correlation coming soon!")
+# === COMPARISON TOOL PLACEHOLDER ===
+st.markdown("### 🔄 Comparison Tool (Coming Soon)")
+st.info("You’ll soon be able to compare species counts and weather metrics between two different date ranges.")
 
-# ---------------------------
-# FOOTER
-# ---------------------------
-st.markdown("""
----
-*Nature Notes is a collaboration between Headwaters at Incarnate Word and local community scientists. Built with ❤️ using eBird + NOAA data.*
-""")
-
-
-app.py has been updated with all current logic and layout as requested, including:
-
-Real-time checklist and weather loading
-
-All date filters (Today, Last 7 Days, This Month, This Season, Custom Range)
-
-Species list with expandable views and photo lookups
-
-Weather chart via Plotly
-
-Metrics for species count and total bird count
-
-Placeholder section for comparison tool and correlations
-
-
-You're ready to upload this file into your GitHub repo. Let me know if you'd like me to prep a requirements.txt, README, or deployment guide next.
-
+# === FOOTER ===
+st.markdown("---")
+st.markdown(
+    """
+    **Headwaters at Incarnate Word**  
+    _A sanctuary in the heart of San Antonio dedicated to ecological education and stewardship._  
+    Data provided by [eBird](https://ebird.org) and [Open-Meteo](https://open-meteo.com).
+    """
+)
