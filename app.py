@@ -32,7 +32,7 @@ body {
 @st.cache_data
 
 def load_checklist():
-    return pd.read_csv(CHECKLIST_PATH, encoding="utf-8", parse_dates=["OBSERVATION DATE"])
+    return pd.read_csv(CHECKLIST_PATH, encoding="utf-8-sig", parse_dates=["OBSERVATION DATE"])
 
 df = load_checklist()
 
