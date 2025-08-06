@@ -17,7 +17,7 @@ st.markdown("""
 Live updates from Headwaters at Incarnate Word using eBird and local weather records.
 """)
 
-CHECKLIST_PATH = "data/latest_checklist.csv"
+CHECKLIST_PATH = "historical_checklist.csv"
 
 # ----------------------------
 # Load and Clean Checklist Data
