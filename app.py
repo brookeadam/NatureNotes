@@ -88,15 +88,14 @@ st.caption("Explore bird sightings and weather patterns side-by-side. Updated bi
 # === Metrics ===
 col1, col2, col3, col4 = st.columns(4)
 
-# Find row with max temp
-st.write("Weather Columns:", weather_filtered.columns.tolist())
-max_temp_row = weather_filtered.loc[weather_filtered["Temp Max (F)"].idxmax()]
-max_temp = max_temp_row["Temp Max (F)"]
+# Show the highest max temp and date
+max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
+max_temp_value = max_temp_row["Max Temp (F)"]
 max_temp_date = max_temp_row["Date"]
 
-# Find row with min temp
-min_temp_row = weather_filtered.loc[weather_filtered["Temp Min (F)"].idxmin()]
-min_temp = min_temp_row["Temp Min (F)"]
+# Show the lowest min temp and date
+min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
+min_temp_value = min_temp_row["Min Temp (F)"]
 min_temp_date = min_temp_row["Date"]
 
 # Display metrics side by side
