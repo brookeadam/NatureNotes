@@ -67,7 +67,7 @@ st.subheader("📊 Daily Species Observations (Historical)")
 daily_species = checklists_df.groupby("OBSERVATION DATE")["COMMON NAME"].nunique().reset_index()
 daily_species_chart = alt.Chart(daily_species).mark_line().encode(
     x="OBSERVATION DATE:T",
-    y=alt.Y("COMMON NAME:Q", title="Unique Species Observed")
+    y=alt.Y("COMMON NAME:Q", title="SPECIES OBSERVED")
 ).properties(height=300)
 st.altair_chart(daily_species_chart, use_container_width=True)
 
@@ -91,7 +91,7 @@ weather_chart = alt.Chart(weather_df).transform_fold(
     ["temp_max", "temp_min", "precipitation"],
     as_=["Metric", "Value"]
 ).mark_line().encode(
-    x="Date:T",
+    x="OBSERVATION DATA:T",
     y="Value:Q",
     color="Metric:N"
 ).properties(height=300)
@@ -106,6 +106,25 @@ summary = checklists_df.groupby("COMMON NAME").agg(
     Total_Seen=("OBSERVATION COUNT", "sum")
 ).reset_index()
 st.dataframe(summary.sort_values("Days_Seen", ascending=False))
+
+# === Sidebar Filters ===
+st.sidebar.header("\u23f0 Filter by Date Range")
+quick_range = st.sidebar.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
+
+if quick_range == "Last 7 Days":
+    start_date = datetime.date.today() - datetime.timedelta(days=7)
+    end_date = datetime.date.today()
+elif quick_range == "This Month":
+    today = datetime.date.today()
+    start_date = today.replace(day=1)
+    end_date = today
+else:
+    start_date = st.sidebar.date_input("Start Date", datetime.date(1, 1, 2025))
+    end_date = st.sidebar.date_input("End Date", datetime.date.today())
+
+# === Filtered Data ===
+obs_filtered = checklists_df[(checklists_df["Date"] >= pd.to_datetime(start_date)) & (checklists_df["Date"] <= pd.to_datetime(end_date))]
+weather_filtered = weather_df[(weather_df["Date"] >= pd.to_datetime(start_date)) & (weather_df["OBSERVATION DATE"] <= pd.to_datetime(end_date))]
 
 # === Footer ===
 st.markdown("---")
