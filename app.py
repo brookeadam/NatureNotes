@@ -22,11 +22,12 @@ LOCATION_LABELS = {
 }
 
 # --- FUNCTIONS ---
-def detect_encoding(filepath):
-    with open(filepath, 'rb') as f:
+def detect_encoding(file_path):
+    with open(file_path, 'rb') as f:
         result = chardet.detect(f.read())
-    return result['encoding']
+        return result['encoding']
 
+@st.cache_data(ttl=3600)
 def load_checklist():
     encoding = detect_encoding(CHECKLIST_PATH)
     df = pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
