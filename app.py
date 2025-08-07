@@ -110,7 +110,6 @@ else:
         color="Metric:N"
     ).properties(height=300)
     st.altair_chart(weather_chart, use_container_width=True)
-else:
     st.warning("No weather data available for selected date range.")
 
 # === Summary Table ===
