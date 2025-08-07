@@ -27,7 +27,7 @@ def robust_read_csv(path, **kwargs):
 @st.cache_data
 def load_checklists():
     df = robust_read_csv(CHECKLIST_PATH)
-    df["Observation Date"] = pd.to_datetime(df["Observation Date"])
+    df["OBSERVATION DATE"] = pd.to_datetime(df["OBSERVATION DATE"])
     return df
 
 # === Load Weather Data ===
