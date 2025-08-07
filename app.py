@@ -153,5 +153,5 @@ st.markdown("""
 ---
 🪶 _This dashboard supports wildlife tracking at the Headwaters Sanctuary._
 
-**Credits:** Built by Brooke Adam • Suported by Kraken Security Operations • Powered by eBird + NOAA
+**Credits:** Built by Brooke Adam • Visuals by Kraken • Powered by eBird + NOAA
 """)
