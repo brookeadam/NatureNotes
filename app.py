@@ -1,118 +1,157 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import datetime as dt
+import numpy as np
 import requests
-import io
-import chardet
+import matplotlib.pyplot as plt
+import base64
+import os
+from datetime import datetime, timedelta
+from io import BytesIO, StringIO
+from chardet import detect
 
-st.set_page_config(page_title="Nature Notes Dashboard", layout="wide")
+st.set_page_config(layout="wide")
 
-st.markdown("# 📊 Nature Notes Dashboard")
-st.markdown("### Headwaters at Incarnate Word")
-st.caption("Built by Brooke Adam, Run by Kraken Security Operations")
+# Constants
+EBIRD_API_KEY = "c49o0js5vkjb"
+EBIRD_LOCATIONS = ["L1210588", "L1210849"]
+CHECKLIST_PATH = "historical_checklists.csv"
+CACHE_PATH = "data/recent_checklists.csv"
+THUMBNAIL_URL_TEMPLATE = "https://api.ebird.org/v2/ref/media/{{speciesCode}}?q={{commonName}}&maxResults=1"
 
-CHECKLIST_PATH = "checklist_data.csv"
-WEATHER_PATH = "weather_data.csv"
-
-def detect_encoding(file_path):
-    with open(file_path, 'rb') as f:
-        result = chardet.detect(f.read())
-        return result['encoding'] or 'utf-8'
-
-@st.cache_data
+# Load historical checklist with encoding detection
 def load_checklist():
-    encoding = detect_encoding(CHECKLIST_PATH)
+    with open(CHECKLIST_PATH, 'rb') as f:
+        result = detect(f.read())
+    encoding = result['encoding']
     df = pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
     return df
 
-@st.cache_data
-def load_weather():
-    return pd.read_csv(WEATHER_PATH, parse_dates=["date"])
+# Fetch recent observations for each location and cache
+def fetch_recent_observations():
+    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+    combined = []
+    for loc in EBIRD_LOCATIONS:
+        url = f"https://api.ebird.org/v2/data/obs/{loc}/recent"
+        r = requests.get(url, headers=headers)
+        if r.status_code == 200:
+            df = pd.DataFrame(r.json())
+            df["locationId"] = loc
+            combined.append(df)
+    if combined:
+        result = pd.concat(combined)
+        result.to_csv(CACHE_PATH, index=False)
+        return result
+    return pd.DataFrame()
 
-bird_df = load_checklist()
-weather_df = load_weather()
+# Load cached or fetch new data if cache is outdated
+def load_recent():
+    if os.path.exists(CACHE_PATH):
+        modified = datetime.fromtimestamp(os.path.getmtime(CACHE_PATH))
+        if datetime.now() - modified > timedelta(days=3):
+            return fetch_recent_observations()
+        return pd.read_csv(CACHE_PATH)
+    return fetch_recent_observations()
 
-# UI Filters
+# Remove duplicate observations by species/date/count
+
+def deduplicate_observations(df):
+    return df.drop_duplicates(subset=["comName", "obsDt", "howMany"])
+
+# Fetch bird thumbnail
+@st.cache_data(show_spinner=False)
+def get_thumbnail(species_code, common_name):
+    try:
+        url = f"https://api.ebird.org/v2/ref/media/{species_code}?q={common_name}&maxResults=1"
+        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            media = response.json()
+            if media:
+                return media[0].get("previewUrl")
+    except:
+        return None
+    return None
+
+# UI
+st.title("📊 Nature Notes Dashboard")
+st.markdown("""
+**Headwaters at Incarnate Word**  
+_Built by Brooke Adam, Run by Kraken Security Operations_
+""")
+
 with st.sidebar:
-    st.markdown("## 🔎 Filter Data")
-    view_mode = st.radio("View Mode", ["📅 Date Range", "🕒 Quick Filters"], index=0)
+    st.header("🔎 Filter Data")
+    start_date = st.date_input("Start Date", datetime.now() - timedelta(days=30))
+    end_date = st.date_input("End Date", datetime.now())
+    view_mode = st.radio("View Mode", ["Recent Observations", "Compare Years"], horizontal=True)
 
-    if view_mode == "📅 Date Range":
-        min_date = bird_df["OBSERVATION DATE"].min()
-        max_date = bird_df["OBSERVATION DATE"].max()
-        date_range = st.date_input("Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
+# Load data
+historical_df = load_checklist()
+recent_df = load_recent()
+recent_df = deduplicate_observations(recent_df)
+
+# Format dates
+historical_df["OBSERVATION DATE"] = pd.to_datetime(historical_df["OBSERVATION DATE"]).dt.date
+recent_df["obsDt"] = pd.to_datetime(recent_df["obsDt"]).dt.date
+
+# Display
+if view_mode == "Recent Observations":
+    st.subheader("🕊️ Recent Bird Observations")
+    filtered = recent_df[(recent_df["obsDt"] >= pd.to_datetime(start_date).date()) &
+                         (recent_df["obsDt"] <= pd.to_datetime(end_date).date())]
+    if filtered.empty:
+        st.warning("No observations in this date range.")
     else:
-        quick_filter = st.selectbox("Select Timeframe", ["Last 7 Days", "This Month", "This Season", "All Time"])
+        for _, row in filtered.iterrows():
+            col1, col2 = st.columns([1, 6])
+            with col1:
+                thumb = get_thumbnail(row.get("speciesCode", ""), row.get("comName", ""))
+                if thumb:
+                    st.image(thumb, width=80)
+            with col2:
+                st.markdown(f"**{row['comName']}** (_{row.get('sciName', '')}_)")
+                st.markdown(f"Observed by **{row.get('userDisplayName', 'N/A')}** on **{row['obsDt']}**")
+                st.markdown(f"Count: {row.get('howMany', 'N/A')}, Duration: {row.get('durationMinutes', 'N/A')} min, Distance: {row.get('effortDistanceKm', 'N/A')} km")
 
-# Filter Data Based on UI
-def filter_data():
-    if view_mode == "📅 Date Range":
-        start, end = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-    else:
-        today = pd.to_datetime("today")
-        if quick_filter == "Last 7 Days":
-            start, end = today - pd.Timedelta(days=7), today
-        elif quick_filter == "This Month":
-            start = today.replace(day=1)
-            end = today
-        elif quick_filter == "This Season":
-            month = today.month
-            if month in [12, 1, 2]:
-                start = pd.to_datetime(f"{today.year if month != 12 else today.year-1}-12-01")
-            elif month in [3, 4, 5]:
-                start = pd.to_datetime(f"{today.year}-03-01")
-            elif month in [6, 7, 8]:
-                start = pd.to_datetime(f"{today.year}-06-01")
-            else:
-                start = pd.to_datetime(f"{today.year}-09-01")
-            end = today
-        else:
-            start, end = bird_df["OBSERVATION DATE"].min(), bird_df["OBSERVATION DATE"].max()
-    bird_filtered = bird_df[(bird_df["OBSERVATION DATE"] >= start) & (bird_df["OBSERVATION DATE"] <= end)]
-    weather_filtered = weather_df[(weather_df["date"] >= start) & (weather_df["date"] <= end)]
-    return bird_filtered, weather_filtered, start, end
+elif view_mode == "Compare Years":
+    st.subheader("📆 Compare Yearly Observations")
+    month = st.selectbox("Select Month", range(1, 13))
+    year1 = st.selectbox("Year 1", sorted(historical_df["OBSERVATION DATE"].dt.year.unique()))
+    year2 = st.selectbox("Year 2", sorted(historical_df["OBSERVATION DATE"].dt.year.unique()))
 
-bird_filtered, weather_filtered, start_date, end_date = filter_data()
+    df1 = historical_df[(historical_df["OBSERVATION DATE"].dt.year == year1) &
+                        (historical_df["OBSERVATION DATE"].dt.month == month)]
+    df2 = historical_df[(historical_df["OBSERVATION DATE"].dt.year == year2) &
+                        (historical_df["OBSERVATION DATE"].dt.month == month)]
 
-# Summary Metrics
-total_species = bird_filtered["COMMON NAME"].nunique()
-total_observations = bird_filtered.shape[0]
-most_common = bird_filtered["COMMON NAME"].value_counts().idxmax()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Species Count - " + str(year1), df1["COMMON NAME"].nunique())
+        st.dataframe(df1[["COMMON NAME", "OBSERVATION COUNT", "OBSERVATION DATE"]])
+    with col2:
+        st.metric("Species Count - " + str(year2), df2["COMMON NAME"].nunique())
+        st.dataframe(df2[["COMMON NAME", "OBSERVATION COUNT", "OBSERVATION DATE"]])
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Unique Species", total_species)
-col2.metric("Observations", total_observations)
-col3.metric("Most Common Species", most_common)
+# Download
+st.markdown("---")
+st.download_button(
+    "⬇️ Download Full Historical Data",
+    data=historical_df.to_csv(index=False).encode("utf-8"),
+    file_name="historical_checklists.csv",
+    mime="text/csv"
+)
 
-# Daily Species Chart
-st.subheader("📈 Species Count Over Time")
-daily_counts = bird_filtered.groupby("OBSERVATION DATE")["COMMON NAME"].nunique().reset_index()
-fig = px.line(daily_counts, x="OBSERVATION DATE", y="COMMON NAME", labels={"COMMON NAME": "Species Count"})
-st.plotly_chart(fig, use_container_width=True)
-
-# Species and Temperature Overlay
-st.subheader("🌡️ Species vs Temperature")
-combined_df = pd.merge(
-    bird_filtered.groupby("OBSERVATION DATE")["COMMON NAME"].nunique().reset_index(name="Species Count"),
-    weather_filtered[["date", "avg_temp"]],
-    left_on="OBSERVATION DATE", right_on="date", how="left"
-).dropna()
-
-fig2 = px.scatter(combined_df, x="avg_temp", y="Species Count", trendline="ols",
-                  labels={"avg_temp": "Avg Temp (°F)", "Species Count": "Species Count"})
-st.plotly_chart(fig2, use_container_width=True)
-
-# Checklist View
-st.subheader("📝 Recent Checklists")
-latest_checklists = bird_filtered.sort_values("OBSERVATION DATE", ascending=False).head(10)
-st.dataframe(latest_checklists[["OBSERVATION DATE", "COMMON NAME", "COUNT", "LOCATION NAME", "OBSERVER ID"]])
+st.download_button(
+    "⬇️ Download Recent Observations",
+    data=recent_df.to_csv(index=False).encode("utf-8"),
+    file_name="recent_ebird_data.csv",
+    mime="text/csv"
+)
 
 # Footer
-st.markdown("---")
-st.markdown(
-    "### Headwaters at Incarnate Word  \n"
-    "_A sanctuary for people and nature in the heart of San Antonio._  \n"
-    "Data presented here is collected through eBird and NOAA services.  \n"
-    "Dashboard designed by **Brooke Adam** | Operated by **Kraken Security Operations**"
-)
+st.markdown("""
+---
+🪶 _This dashboard supports wildlife tracking at the Headwaters Sanctuary._
+
+**Credits:** Built by Brooke Adam • Supported by Kraken Security Operations • Powered by eBird + NOAA
+""")
