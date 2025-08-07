@@ -1,137 +1,117 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import requests
-import io
-import zipfile
 import os
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-from meteostat import Stations, Daily
-from PIL import Image
-from urllib.parse import quote
 import base64
+from datetime import datetime, timedelta
+from io import StringIO
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import chardet
 
-# Constants
-CHECKLIST_PATH = "data/historical_checklists.csv"
-WEATHER_CACHE_PATH = "data/weather_cache.csv"
-EBIRD_LOCATIONS = {
-    "Headwaters UIW Trail": "L1210588",
-    "Headwaters UIW Circle": "L1210849"
-}
-
+# ---------- CONFIGURATION ----------
 st.set_page_config(page_title="Nature Notes Dashboard", layout="wide")
 
-# --- Sidebar Filters ---
-st.sidebar.header("🔎 Filter Data")
+# Paths
+CHECKLIST_PATH = "data/weekly_checklist.csv"
+WEATHER_PATH = "data/weather_data.csv"
 
-view_mode = st.sidebar.radio("View Mode", ["📊 Nature Notes Dashboard", "📋 Raw Data Table"])
+# App Branding
+st.markdown("""
+<style>
+    body, .stApp { background-color: #f5f2ec; }
+    .main { background-color: #f5f2ec; }
+    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
+    .css-18ni7ap.e8zbici2 { background-color: #e9e4d4; }
+    h1, h2, h3, h4, h5, h6, .stMarkdown { color: #3e3e3c; }
+    footer { visibility: hidden; }
+</style>
+""", unsafe_allow_html=True)
 
-# --- Utility Functions ---
+# ---------- FUNCTIONS ----------
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
-        result = chardet.detect(f.read())
-    return result['encoding']
+        raw_data = f.read(10000)
+    result = chardet.detect(raw_data)
+    return result['encoding'] or 'utf-8'
 
 def load_checklist():
     encoding = detect_encoding(CHECKLIST_PATH)
     df = pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
-    df = df[df['LOCATION ID'].isin(EBIRD_LOCATIONS.values())].copy()
-    df['OBSERVATION DATE'] = pd.to_datetime(df['OBSERVATION DATE'])
-    df['COMMON NAME'] = df['COMMON NAME'].str.title()
-    df['SCIENTIFIC NAME'] = df['SCIENTIFIC NAME'].str.title()
+    df = df.drop_duplicates(subset=["COMMON NAME", "OBSERVATION DATE", "OBSERVER ID"])
+    df = df[df["LOCATION ID"].isin(["L1210588", "L1210849"])]
     return df
 
-def get_date_options(df):
-    min_date = df['OBSERVATION DATE'].min()
-    max_date = df['OBSERVATION DATE'].max()
-    today = pd.Timestamp.today().normalize()
-    return {
-        "All Time": (min_date, max_date),
-        "This Month": (today.replace(day=1), today),
-        "Last 7 Days": (today - pd.Timedelta(days=6), today),
-        "This Season (Est)": (today - pd.Timedelta(days=90), today)
-    }
-
-@st.cache_data(ttl=3600)
-def get_weather_data(lat, lon, start, end):
-    station = Stations().nearby(lat, lon).fetch(1)
-    if station.empty:
-        return pd.DataFrame()
-    station_id = station.index[0]
-    data = Daily(station_id, start, end)
-    df = data.fetch()
-    df.reset_index(inplace=True)
+def load_weather():
+    df = pd.read_csv(WEATHER_PATH, parse_dates=["date"])
     return df
 
-@st.cache_data(ttl=600)
-def fetch_ebird_species_photo(species_name):
-    encoded_name = quote(species_name)
-    url = f"https://api.ebird.org/v2/ref/photo/{encoded_name}"
-    headers = {"X-eBirdApiToken": os.getenv("EBIRD_API_KEY", "")}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        return data.get("photoUrl")
-    return None
+def download_link(df, filename, label):
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{label}</a>'
+    return href
 
-# --- Load Data ---
+# ---------- SIDEBAR ----------
+st.sidebar.header("🔎 Filter Data")
+view_mode = st.sidebar.radio("View Mode", ["📊 Nature Notes Dashboard", "📋 Raw Data"])
+
+# ---------- LOAD DATA ----------
 bird_df = load_checklist()
+weather_df = load_weather()
 
-# --- Sidebar Date Filter ---
-date_options = get_date_options(bird_df)
-default_range = date_options["Last 7 Days"]
-selected_range_label = st.sidebar.selectbox("Select Timeframe", list(date_options.keys()))
-start_date, end_date = date_options[selected_range_label]
-
-filtered_df = bird_df[(bird_df['OBSERVATION DATE'] >= start_date) & (bird_df['OBSERVATION DATE'] <= end_date)]
-
-# --- Main Content ---
+# ---------- HEADER ----------
 st.title("📊 Nature Notes Dashboard")
-st.subheader("Headwaters at Incarnate Word")
+st.markdown("### Headwaters at Incarnate Word")
 st.caption("Built by Brooke Adam, Run by Kraken Security Operations")
 
-if view_mode == "📋 Raw Data Table":
-    st.dataframe(filtered_df)
+# ---------- DATE FILTERING ----------
+min_date = bird_df["OBSERVATION DATE"].min()
+max_date = bird_df["OBSERVATION DATE"].max()
+
+def_month = datetime.today().replace(day=1)
+start_date = st.sidebar.date_input("Start Date", value=def_month, min_value=min_date, max_value=max_date)
+end_date = st.sidebar.date_input("End Date", value=datetime.today(), min_value=min_date, max_value=max_date)
+
+mask = (bird_df["OBSERVATION DATE"] >= pd.to_datetime(start_date)) & (bird_df["OBSERVATION DATE"] <= pd.to_datetime(end_date))
+filtered_df = bird_df[mask]
+
+# ---------- VIEW MODES ----------
+if view_mode == "📊 Nature Notes Dashboard":
+    st.subheader(f"🕊️ {len(filtered_df['COMMON NAME'].unique())} Bird Species Observed")
+    daily_counts = filtered_df.groupby("OBSERVATION DATE")["COMMON NAME"].nunique()
+    weather_filtered = weather_df[(weather_df["date"] >= pd.to_datetime(start_date)) & (weather_df["date"] <= pd.to_datetime(end_date))]
+
+    fig, ax1 = plt.subplots(figsize=(12, 4))
+    ax1.plot(daily_counts.index, daily_counts.values, marker="o", label="Species Count", color="tab:green")
+    ax1.set_ylabel("Bird Species Count", color="tab:green")
+    ax1.tick_params(axis='y', labelcolor="tab:green")
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+
+    ax2 = ax1.twinx()
+    ax2.plot(weather_filtered["date"], weather_filtered["avg_temp"], linestyle="--", label="Avg Temp", color="tab:orange")
+    ax2.set_ylabel("Avg Temp (°F)", color="tab:orange")
+    ax2.tick_params(axis='y', labelcolor="tab:orange")
+
+    fig.autofmt_xdate()
+    st.pyplot(fig)
+
+    with st.expander("📸 Recent Observations"):
+        for _, row in filtered_df.sort_values("OBSERVATION DATE", ascending=False).head(20).iterrows():
+            st.markdown(f"**{row['COMMON NAME']}**  ")
+            st.markdown(f"*{row['OBSERVATION DATE'].strftime('%b %d, %Y')} by {row['OBSERVER ID']}*")
+            photo_url = f"https://cdn.download.ams.birds.cornell.edu/api/v1/asset/{row['SPECIES CODE']}/512"
+            st.image(photo_url, width=150)
+
+    with st.expander("⬇️ Download Data"):
+        st.markdown(download_link(filtered_df, "filtered_checklist.csv", "Download Filtered Checklist (CSV)"), unsafe_allow_html=True)
+
 else:
-    col1, col2 = st.columns(2)
+    st.subheader("📋 Raw eBird Data")
+    st.dataframe(filtered_df)
 
-    with col1:
-        st.metric("Unique Species Observed", filtered_df['COMMON NAME'].nunique())
-        st.metric("Total Observations", filtered_df['COMMON NAME'].count())
-
-    with col2:
-        daily_counts = filtered_df.groupby("OBSERVATION DATE")["COMMON NAME"].nunique()
-        st.line_chart(daily_counts, use_container_width=True)
-
-    with st.expander("📷 Recent Observations with Photos"):
-        recent_obs = filtered_df.sort_values("OBSERVATION DATE", ascending=False).drop_duplicates("COMMON NAME").head(10)
-        for _, row in recent_obs.iterrows():
-            cols = st.columns([1, 3])
-            with cols[0]:
-                st.markdown(f"**{row['COMMON NAME']}**")
-                st.caption(row['SCIENTIFIC NAME'])
-                st.caption(f"{row['OBSERVATION DATE'].date()} | {row['LOCATION']}")
-            with cols[1]:
-                photo_url = fetch_ebird_species_photo(row['COMMON NAME'])
-                if photo_url:
-                    st.image(photo_url, width=300)
-                else:
-                    st.text("[No image available]")
-
-    with st.expander("🌦️ Weather Trends Comparison"):
-        lat, lon = 29.4659, -98.4695
-        weather_df = get_weather_data(lat, lon, start_date, end_date)
-        if not weather_df.empty:
-            st.line_chart(weather_df.set_index("time")["tavg"], use_container_width=True)
-        else:
-            st.warning("No weather data available for the selected range.")
-
-# --- Footer ---
-st.markdown("---")
-st.markdown("**Headwaters at Incarnate Word**  ")
-st.caption("A sanctuary for nature, science, and spirit in the heart of San Antonio.  ")
-st.caption("© 2025 Nature Notes | Developed with ❤️ by Brooke Adam and Kraken Security Ops")
+# ---------- FOOTER ----------
+st.markdown("""
+---
+<center><sub>📍 Dashboard for Headwaters at Incarnate Word • Built by Brooke Adam, Run by Kraken Security Operations</sub></center>
+""", unsafe_allow_html=True)
