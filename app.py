@@ -78,9 +78,9 @@ if not ebird_df.empty:
     ebird_df = ebird_df.sort_values("obsDt", ascending=False)
     st.dataframe(ebird_df[["comName", "howMany", "obsDt", "locName"]].rename(columns={
         "comName": "COMMON NAME",
-        "howMany": "Count",
-        "obsDt": "Date Observed",
-        "locName": "Location"
+        "howMany": "OBSERVATION COUNT",
+        "obsDt": "OBSERVATION DATE",
+        "locName": "LOCATION"
     }))
 else:
     st.warning("No recent observations available.")
@@ -103,7 +103,7 @@ summary = checklists_df.groupby("COMMON NAME").agg(
     First_Seen=("OBSERVATION DATE", "min"),
     Last_Seen=("OBSERVATION DATE", "max"),
     Days_Seen=("OBSERVATION DATE", "nunique"),
-    Total_Seen=("Count", "sum")
+    Total_Seen=("OBSERVATION COUNT", "sum")
 ).reset_index()
 st.dataframe(summary.sort_values("Days_Seen", ascending=False))
 
