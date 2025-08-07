@@ -105,9 +105,9 @@ with col1:
 with col2:
     st.metric("Total Species", len(obs_filtered["COMMON NAME"].unique()))
 with col3:
-    st.metric(label="Max Temp (°F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
+    st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
 with col4:
-    st.metric(label="Min Temp (°F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))    
+    st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))    
 
 # === Daily Species Observations ===
 st.subheader("📊 Daily Species Observations")
