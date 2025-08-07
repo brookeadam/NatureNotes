@@ -54,7 +54,7 @@ def load_all_ebird_data():
 # === App Layout ===
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
-st.title("📒 Nature Notes Dashboard")
+st.title("🌿 Nature Notes Dashboard")
 st.markdown("#### Headwaters at Incarnate Word — Real-time bird and weather insights")
 
 # === Load Data ===
@@ -64,10 +64,10 @@ ebird_df = load_all_ebird_data()
 
 # === Species Observed per Day ===
 st.subheader("📊 Daily Species Observations (Historical)")
-daily_species = checklists_df.groupby("Date")["Common Name"].nunique().reset_index()
+daily_species = checklists_df.groupby("OBSERVATION DATE")["COMMON NAME"].nunique().reset_index()
 daily_species_chart = alt.Chart(daily_species).mark_line().encode(
-    x="Date:T",
-    y=alt.Y("Common Name:Q", title="Unique Species Observed")
+    x="OBSERVATION DATE:T",
+    y=alt.Y("COMMON NAME:Q", title="Unique Species Observed")
 ).properties(height=300)
 st.altair_chart(daily_species_chart, use_container_width=True)
 
@@ -77,7 +77,7 @@ if not ebird_df.empty:
     ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"])
     ebird_df = ebird_df.sort_values("obsDt", ascending=False)
     st.dataframe(ebird_df[["comName", "howMany", "obsDt", "locName"]].rename(columns={
-        "comName": "Common Name",
+        "comName": "COMMON NAME",
         "howMany": "Count",
         "obsDt": "Date Observed",
         "locName": "Location"
@@ -99,10 +99,10 @@ st.altair_chart(weather_chart, use_container_width=True)
 
 # === Summary Table ===
 st.subheader("📋 Observation Summary")
-summary = checklists_df.groupby("Common Name").agg(
-    First_Seen=("Date", "min"),
-    Last_Seen=("Date", "max"),
-    Days_Seen=("Date", "nunique"),
+summary = checklists_df.groupby("COMMON NAME").agg(
+    First_Seen=("OBSERVATION DATE", "min"),
+    Last_Seen=("OBSERVATION DATE", "max"),
+    Days_Seen=("OBSERVATION DATE", "nunique"),
     Total_Seen=("Count", "sum")
 ).reset_index()
 st.dataframe(summary.sort_values("Days_Seen", ascending=False))
