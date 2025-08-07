@@ -86,15 +86,28 @@ st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
 # === Metrics ===
-col1, col2 = st.columns(2)
+col1, col2, col3, col4 = st.columns(4)
 
+# Find row with max temp
+max_temp_row = weather_filtered.loc[weather_filtered["Temp Max (F)"].idxmax()]
+max_temp = max_temp_row["Temp Max (F)"]
+max_temp_date = max_temp_row["Date"]
+
+# Find row with min temp
+min_temp_row = weather_filtered.loc[weather_filtered["Temp Min (F)"].idxmin()]
+min_temp = min_temp_row["Temp Min (F)"]
+min_temp_date = min_temp_row["Date"]
+
+# Display metrics side by side
+col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("Total Species", len(obs_filtered["COMMON NAME"].unique()))
     st.metric("Total Observations", obs_filtered["OBSERVATION COUNT"].sum())
-
 with col2:
-    st.metric("Avg Temp (°F)", f"{weather_filtered['Temperature Avg (F)'].mean():.1f}")
-    st.metric("Total Rain (in)", f"{weather_filtered['Precipitation (in)'].sum():.2f}")
+    st.metric("Total Species", len(obs_filtered["COMMON NAME"].unique()))
+with col3:
+    st.metric(label="Max Temp (°F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
+with col4:
+    st.metric(label="Min Temp (°F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))    
 
 # === Daily Species Observations ===
 st.subheader("📊 Daily Species Observations")
