@@ -79,4 +79,3 @@ view_mode = st.sidebar.radio("View Mode", ["📅 Single Date", "📆 Date Range"
 # Placeholder filters — full implementation continues below...
 
 st.title("📊 Nature Notes Dashboard")
-st.subheader("Built by Brooke Adam, supposrted by Kraken Security Operations")
