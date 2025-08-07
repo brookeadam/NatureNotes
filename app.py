@@ -1,78 +1,111 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
+import requests
+import json
+import plotly.express as px
+import plotly.graph_objects as go
 import chardet
+from datetime import datetime, timedelta
+import os
 
-st.set_page_config(page_title="Nature Notes", layout="wide")
+st.set_page_config(page_title="Nature Notes Dashboard", layout="wide")
 
-st.markdown("# 📊 Nature Notes Dashboard")
-st.markdown("### Headwaters at Incarnate Word")
-st.markdown("**Built by Brooke Adam, Run by Kraken Security Operations**")
-
+# Constants
 CHECKLIST_PATH = "historical_checklists.csv"
 WEATHER_PATH = "weather_data.csv"
+SPECIES_IMAGES_PATH = "species_thumbnails.json"
 
-# Detect encoding before loading
-def detect_encoding(file_path):
-    with open(file_path, "rb") as f:
-        result = chardet.detect(f.read(10000))
-        return result["encoding"]
+# --- Load Data with Robust Encoding Detection ---
 
 @st.cache_data
 def load_checklist():
-    encoding = detect_encoding(CHECKLIST_PATH)
-    return pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
+    with open(CHECKLIST_PATH, 'rb') as f:
+        result = chardet.detect(f.read())
+        encoding = result['encoding']
+    df = pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
+    df["COMMON NAME"] = df["COMMON NAME"].str.strip()
+    return df
 
 @st.cache_data
 def load_weather():
-    encoding = detect_encoding(WEATHER_PATH)
-    return pd.read_csv(WEATHER_PATH, encoding=encoding, parse_dates=["date"])
+    with open(WEATHER_PATH, 'rb') as f:
+        result = chardet.detect(f.read())
+        encoding = result['encoding']
+    df = pd.read_csv(WEATHER_PATH, encoding=encoding, parse_dates=["date"])
+    return df
 
-bird_df = load_checklist()
+@st.cache_data
+def load_species_images():
+    if os.path.exists(SPECIES_IMAGES_PATH):
+        with open(SPECIES_IMAGES_PATH, "r") as f:
+            return json.load(f)
+    return {}
+
+# Load data
+ebird_df = load_checklist()
 weather_df = load_weather()
+species_images = load_species_images()
 
-# Sidebar filters
+# --- Sidebar Filters ---
+
 st.sidebar.header("🔎 Filter Data")
-date_range = st.sidebar.date_input("Select Date Range", [bird_df["OBSERVATION DATE"].min(), bird_df["OBSERVATION DATE"].max()])
-selected_location = st.sidebar.selectbox("Select Location", bird_df["LOCALITY"].unique())
-view_mode = st.sidebar.radio("View Mode", ["Summary", "Raw Data"])
+view_mode = st.sidebar.radio("View Mode", ["📊 Nature Notes Dashboard", "📄 Raw eBird Checklist"])
 
-# Filter data
-filtered_df = bird_df[
-    (bird_df["OBSERVATION DATE"] >= pd.to_datetime(date_range[0])) &
-    (bird_df["OBSERVATION DATE"] <= pd.to_datetime(date_range[1])) &
-    (bird_df["LOCALITY"] == selected_location)
+min_date = ebird_df["OBSERVATION DATE"].min().date()
+max_date = ebird_df["OBSERVATION DATE"].max().date()
+def_season_start = max_date - timedelta(days=90)
+
+start_date, end_date = st.sidebar.date_input(
+    "Select Date Range", [def_season_start, max_date],
+    min_value=min_date, max_value=max_date
+)
+
+# Filtered Data
+data = ebird_df[
+    (ebird_df["OBSERVATION DATE"].dt.date >= start_date) &
+    (ebird_df["OBSERVATION DATE"].dt.date <= end_date)
+]
+weather = weather_df[
+    (weather_df["date"].dt.date >= start_date) &
+    (weather_df["date"].dt.date <= end_date)
 ]
 
-filtered_weather = weather_df[
-    (weather_df["date"] >= pd.to_datetime(date_range[0])) &
-    (weather_df["date"] <= pd.to_datetime(date_range[1]))
-]
+# --- Main View ---
 
-# Display filtered data
-if view_mode == "Summary":
-    st.subheader("Species Observed")
-    species_counts = filtered_df["COMMON NAME"].value_counts().reset_index()
-    species_counts.columns = ["Species", "Sightings"]
-    st.dataframe(species_counts)
-
-    st.subheader("Weather Trends")
-    fig, ax = plt.subplots()
-    ax.plot(filtered_weather["date"], filtered_weather["temperature_avg"], marker='o')
-    ax.set_title("Average Temperature Over Time")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Avg Temp (°F)")
-    st.pyplot(fig)
+if view_mode == "📄 Raw eBird Checklist":
+    st.title("📄 Raw eBird Checklist")
+    st.dataframe(data)
 
 else:
-    st.subheader("Raw Bird Observations")
-    st.dataframe(filtered_df)
+    st.title("📊 Nature Notes Dashboard")
+    st.markdown("## Headwaters at Incarnate Word")
 
-    st.subheader("Raw Weather Data")
-    st.dataframe(filtered_weather)
+    # Species Summary
+    st.subheader("🦉 Bird Species Observed")
+    species_counts = data["COMMON NAME"].value_counts().reset_index()
+    species_counts.columns = ["Species", "Count"]
+    st.dataframe(species_counts)
 
-# Footer
+    # Line Chart - Observations per Day
+    st.subheader("📈 Daily Bird Observations")
+    daily_counts = data.groupby(data["OBSERVATION DATE"].dt.date)["COMMON NAME"].count().reset_index()
+    daily_counts.columns = ["Date", "Observation Count"]
+    fig = px.line(daily_counts, x="Date", y="Observation Count", title="Observations Over Time")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Weather Overlay
+    st.subheader("🌦️ Temperature Trend")
+    if not weather.empty:
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=weather["date"], y=weather["temperature_avg"],
+                                  mode='lines+markers', name='Avg Temp'))
+        fig2.update_layout(title="Average Temperature Over Time",
+                           xaxis_title="Date", yaxis_title="Temp (°F)")
+        st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info("No weather data available for selected range.")
+
+# --- Footer ---
+
 st.markdown("---")
-st.markdown("🕊️ Powered by eBird and Weather Data | 📍 Headwaters at Incarnate Word")
-st.markdown("© 2025 Brooke Adam. All rights reserved.")
+st.markdown("Built by Brooke Adam, Run by Kraken Security Operations")
