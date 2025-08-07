@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+import chardet
 
 st.set_page_config(page_title="Nature Notes", layout="wide")
 
@@ -12,20 +13,21 @@ st.markdown("**Built by Brooke Adam, Run by Kraken Security Operations**")
 CHECKLIST_PATH = "historical_checklists.csv"
 WEATHER_PATH = "weather_data.csv"
 
-# Robust loading function with utf-8 fallback to latin1
+# Detect encoding before loading
+def detect_encoding(file_path):
+    with open(file_path, "rb") as f:
+        result = chardet.detect(f.read(10000))
+        return result["encoding"]
+
 @st.cache_data
 def load_checklist():
-    try:
-        return pd.read_csv(CHECKLIST_PATH, encoding="utf-8", parse_dates=["OBSERVATION DATE"])
-    except UnicodeDecodeError:
-        return pd.read_csv(CHECKLIST_PATH, encoding="latin1", parse_dates=["OBSERVATION DATE"])
+    encoding = detect_encoding(CHECKLIST_PATH)
+    return pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
 
 @st.cache_data
 def load_weather():
-    try:
-        return pd.read_csv(WEATHER_PATH, encoding="utf-8", parse_dates=["date"])
-    except UnicodeDecodeError:
-        return pd.read_csv(WEATHER_PATH, encoding="latin1", parse_dates=["date"])
+    encoding = detect_encoding(WEATHER_PATH)
+    return pd.read_csv(WEATHER_PATH, encoding=encoding, parse_dates=["date"])
 
 bird_df = load_checklist()
 weather_df = load_weather()
