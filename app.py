@@ -18,12 +18,24 @@ SPECIES_IMAGES_PATH = "species_thumbnails.json"
 # --- Load Data ---
 @st.cache_data
 def load_checklist():
-    # Auto-detect encoding
+    # Try auto-detecting encoding and fall back if needed
     with open(CHECKLIST_PATH, 'rb') as f:
-        result = chardet.detect(f.read())
-        encoding = result['encoding']
+        raw_data = f.read()
+        result = chardet.detect(raw_data)
+        detected_encoding = result['encoding']
 
-    df = pd.read_csv(CHECKLIST_PATH, encoding=encoding, parse_dates=["OBSERVATION DATE"])
+    # Try detected encoding, then UTF-8, then Latin-1
+    for enc in [detected_encoding, 'utf-8', 'latin1']:
+        try:
+            df = pd.read_csv(CHECKLIST_PATH, encoding=enc, parse_dates=["OBSERVATION DATE"])
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        raise UnicodeDecodeError(
+            f"Could not decode {CHECKLIST_PATH} using {detected_encoding}, UTF-8, or Latin-1 encodings."
+        )
+
     df["COMMON NAME"] = df["COMMON NAME"].str.strip()
     return df
 
