@@ -21,8 +21,8 @@ st.caption("Explore bird sightings and weather patterns side-by-side. Updated bi
 col1, col2 = st.columns(2)
 
 with col1:
-    st.metric("Total Species", len(filtered_df["Common Name"].unique()))
-    st.metric("Total Observations", filtered_df["Count"].sum())
+    st.metric("Total Species", len(filtered_df["COMMON NAME"].unique()))
+    st.metric("Total Observations", filtered_df["OBSERVATION COUNT"].sum())
 
 with col2:
     st.metric("Avg Temp (°F)", f"{weather_filtered['Temperature Avg (F)'].mean():.1f}")
