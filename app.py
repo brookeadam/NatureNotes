@@ -13,6 +13,10 @@ HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 CHECKLIST_PATH = "historical_checklists.csv"
 WEATHER_PATH = "weather_data.csv"
 
+# === HEADER ===
+st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
+st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
+
 # === Robust CSV Loader with Encoding Fallback ===
 def robust_read_csv(path, **kwargs):
     encodings = ['utf-8', 'ISO-8859-1', 'latin1', 'cp1252']
@@ -85,17 +89,26 @@ if not ebird_df.empty:
 else:
     st.warning("No recent observations available.")
 
-# === Weather Chart ===
+# === Weather Summary ===
+with col2:
+    st.subheader("☀️ Weather Trends")
+    st.line_chart(weather_filtered.set_index("Date")["Temperature Avg (F)"])
+    st.bar_chart(weather_filtered.set_index("Date")["Precipitation (in)"])
+
+# === Weather Chart (Altair) ===
 st.subheader("🌦️ Weather Trends")
-weather_chart = alt.Chart(weather_df).transform_fold(
-    ["temp_max", "temp_min", "precipitation"],
-    as_=["Metric", "Value"]
-).mark_line().encode(
-    x="OBSERVATION DATA:T",
-    y="Value:Q",
-    color="Metric:N"
-).properties(height=300)
-st.altair_chart(weather_chart, use_container_width=True)
+if not weather_filtered.empty:
+    weather_chart = alt.Chart(weather_filtered).transform_fold(
+        ["Temperature Max (F)", "Temperature Min (F)", "Precipitation (in)"],
+        as_=["Metric", "Value"]
+    ).mark_line().encode(
+        x="Date:T",
+        y="Value:Q",
+        color="Metric:N"
+    ).properties(height=300)
+    st.altair_chart(weather_chart, use_container_width=True)
+else:
+    st.warning("No weather data available for selected date range.")
 
 # === Summary Table ===
 st.subheader("📋 Observation Summary")
