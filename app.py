@@ -89,6 +89,7 @@ st.caption("Explore bird sightings and weather patterns side-by-side. Updated bi
 col1, col2, col3, col4 = st.columns(4)
 
 # Find row with max temp
+st.write("Weather Columns:", weather_filtered.columns.tolist())
 max_temp_row = weather_filtered.loc[weather_filtered["Temp Max (F)"].idxmax()]
 max_temp = max_temp_row["Temp Max (F)"]
 max_temp_date = max_temp_row["Date"]
