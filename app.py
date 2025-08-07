@@ -14,7 +14,7 @@ st.set_page_config(layout="wide")
 # Constants
 EBIRD_API_KEY = "c49o0js5vkjb"
 EBIRD_LOCATIONS = ["L1210588", "L1210849"]
-CHECKLIST_PATH = "historical_checklists.csv"
+CHECKLIST_PATH = "data/historical_checklists.csv"
 CACHE_PATH = "data/recent_checklists.csv"
 THUMBNAIL_URL_TEMPLATE = "https://api.ebird.org/v2/ref/media/{{speciesCode}}?q={{commonName}}&maxResults=1"
 
@@ -153,5 +153,5 @@ st.markdown("""
 ---
 🪶 _This dashboard supports wildlife tracking at the Headwaters Sanctuary._
 
-**Credits:** Built by Brooke Adam • Supported by Kraken Security Operations • Powered by eBird + NOAA
+**Credits:** Built by Brooke Adam • Visuals by Kraken • Powered by eBird + NOAA
 """)
