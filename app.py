@@ -95,15 +95,18 @@ with col2:
     st.line_chart(weather_filtered.set_index("Date")["Temperature Avg (F)"])
     st.bar_chart(weather_filtered.set_index("Date")["Precipitation (in)"])
 
-# === Weather Chart (Altair) ===
-st.subheader("🌦️ Weather Trends")
-if not weather_filtered.empty:
+# === Altair Weather Chart ===
+st.subheader("🌦️ Weather Trends (Detailed)")
+# Ensure columns exist in your CSV: 'Date', 'temp_max', 'temp_min', 'precipitation'
+if not {"Date", "temp_max", "temp_min", "precipitation"}.issubset(weather_filtered.columns):
+    st.warning("⚠️ Altair weather chart skipped — required columns not found.")
+else:
     weather_chart = alt.Chart(weather_filtered).transform_fold(
-        ["Temperature Max (F)", "Temperature Min (F)", "Precipitation (in)"],
+        ["temp_max", "temp_min", "precipitation"],
         as_=["Metric", "Value"]
     ).mark_line().encode(
-        x="Date:T",
-        y="Value:Q",
+        x=alt.X("Date:T", title="Date"),
+        y=alt.Y("Value:Q", title="Metric Value"),
         color="Metric:N"
     ).properties(height=300)
     st.altair_chart(weather_chart, use_container_width=True)
