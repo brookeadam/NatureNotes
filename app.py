@@ -17,6 +17,17 @@ WEATHER_PATH = "weather_data.csv"
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
+# === Weather & Species Metrics Summary Columns ===
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Total Species", len(filtered_df["Common Name"].unique()))
+    st.metric("Total Observations", filtered_df["Count"].sum())
+
+with col2:
+    st.metric("Avg Temp (°F)", f"{weather_filtered['Temperature Avg (F)'].mean():.1f}")
+    st.metric("Total Rain (in)", f"{weather_filtered['Precipitation (in)'].sum():.2f}")
+
 # === Robust CSV Loader with Encoding Fallback ===
 def robust_read_csv(path, **kwargs):
     encodings = ['utf-8', 'ISO-8859-1', 'latin1', 'cp1252']
