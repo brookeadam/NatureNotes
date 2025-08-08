@@ -80,6 +80,7 @@ weather_filtered = weather_df[
     (weather_df["Date"] >= pd.to_datetime(start_date)) &
     (weather_df["Date"] <= pd.to_datetime(end_date))
 ]
+st.write("🛠️ Debug: Filtered Weather Data", weather_filtered)
 
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
@@ -88,22 +89,28 @@ st.caption("Explore bird sightings and weather patterns side-by-side. Updated bi
 # === Metrics ===
 col1, col2, col3, col4 = st.columns(4)
 
-# Show the highest max temp and date
-max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
-max_temp_value = max_temp_row["Max Temp (F)"]
-max_temp_date = max_temp_row["Date"]
+if not weather_filtered.empty and weather_filtered["Max Temp (F)"].notna().any():
+    max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
+    max_temp_value = max_temp_row["Max Temp (F)"]
+    max_temp_date = max_temp_row["Date"]
+else:
+    max_temp_value = "—"
+    max_temp_date = "No data"
 
-# Show the lowest min temp and date
-min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
-min_temp_value = min_temp_row["Min Temp (F)"]
-min_temp_date = min_temp_row["Date"]
+if not weather_filtered.empty and weather_filtered["Min Temp (F)"].notna().any():
+    min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
+    min_temp_value = min_temp_row["Min Temp (F)"]
+    min_temp_date = min_temp_row["Date"]
+else:
+    min_temp_value = "—"
+    min_temp_date = "No data"
 
-# Display both as metrics
+# Display metrics
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("Max Temp (°F)", f"{max_temp_value:.1f}", label_visibility="visible", help=f"on {max_temp_date.date()}")
+    st.metric("Max Temp (F)", max_temp_value, help=str(max_temp_date))
 with col2:
-    st.metric("Min Temp (°F)", f"{min_temp_value:.1f}", label_visibility="visible", help=f"on {min_temp_date.date()}")
+    st.metric("Min Temp (F)", min_temp_value, help=str(min_temp_date))
 with col3:
     st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
 with col4:
