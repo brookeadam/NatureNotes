@@ -35,6 +35,8 @@ def load_checklists():
 @st.cache_data
 def load_weather():
     return robust_read_csv(WEATHER_PATH, parse_dates=["Date"])
+weather_df = pd.read_csv("weather_data.csv")  # Or however you load it
+weather_df["Date"] = pd.to_datetime(weather_df["Date"], errors="coerce")  # 🔥 Required
 
 @st.cache_data
 def get_ebird_data(loc_id):
@@ -85,14 +87,11 @@ weather_filtered = weather_df[
     (weather_df["Date"] <= pd.to_datetime(end_date))
 ]
 
+st.write("weather_df['Date'] dtype:", weather_df["Date"].dtype)
+
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
-
-# === Filter the weather data ===
-weather_filtered = weather_df[
-    (weather_df["Date"] >= start_date) & (weather_df["Date"] <= end_date)
-]
 
 # Debugging: show what we’re working with
 st.write("🛠️ Filtered Weather Data", weather_filtered)
