@@ -76,6 +76,10 @@ obs_filtered = checklists_df[
     (checklists_df["OBSERVATION DATE"] <= pd.to_datetime(end_date))
 ]
 
+# Ensure weather_df["Date"] is datetime
+weather_df["Date"] = pd.to_datetime(weather_df["Date"], errors='coerce')
+
+# Now safely filter
 weather_filtered = weather_df[
     (weather_df["Date"] >= pd.to_datetime(start_date)) &
     (weather_df["Date"] <= pd.to_datetime(end_date))
