@@ -89,7 +89,7 @@ st.caption("Explore bird sightings and weather patterns side-by-side. Updated bi
 col1, col2, col3, col4 = st.columns(4)
 
 # Show the highest max temp and date
-max_temp_row = weather_filtered.loc[weather_df["Max Temp (F)"].idxmax()]
+max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
 max_temp_value = max_temp_row["Max Temp (F)"]
 max_temp_date = max_temp_row["Date"]
 
@@ -98,12 +98,12 @@ min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
 min_temp_value = min_temp_row["Min Temp (F)"]
 min_temp_date = min_temp_row["Date"]
 
-# Display metrics side by side
-col1, col2, col3, col4 = st.columns(4)
+# Display both as metrics
+col1, col2 = st.columns(2)
 with col1:
-    st.metric("Total Observations", obs_filtered["OBSERVATION COUNT"].sum())
+    st.metric("Max Temp (°F)", f"{max_temp_value:.1f}", label_visibility="visible", help=f"on {max_temp_date.date()}")
 with col2:
-    st.metric("Total Species", len(obs_filtered["COMMON NAME"].unique()))
+    st.metric("Min Temp (°F)", f"{min_temp_value:.1f}", label_visibility="visible", help=f"on {min_temp_date.date()}")
 with col3:
     st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
 with col4:
