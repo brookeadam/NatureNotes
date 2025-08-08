@@ -87,8 +87,6 @@ weather_filtered = weather_df[
     (weather_df["Date"] <= pd.to_datetime(end_date))
 ]
 
-st.write("weather_df['Date'] dtype:", weather_df["Date"].dtype)
-
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
