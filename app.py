@@ -34,9 +34,22 @@ def load_checklists():
 
 @st.cache_data
 def load_weather():
-    return robust_read_csv(WEATHER_PATH, parse_dates=["Date"])
-weather_df = pd.read_csv("weather_data.csv")  # Or however you load it
-weather_df["Date"] = pd.to_datetime(weather_df["Date"], errors="coerce")  # 🔥 Required
+    df = robust_read_csv(WEATHER_PATH, parse_dates=["Date"])
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+
+    # Standardize column names
+    rename_cols = {
+        "Max Temp (F)": "temp_max",
+        "Min Temp (F)": "temp_min",
+        "Precipitation (in)": "precipitation"
+    }
+    df.rename(columns=rename_cols, inplace=True)
+
+    # Ensure numeric types
+    for col in ["temp_max", "temp_min", "precipitation"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
 
 @st.cache_data
 def get_ebird_data(loc_id):
@@ -78,10 +91,6 @@ obs_filtered = checklists_df[
     (checklists_df["OBSERVATION DATE"] <= pd.to_datetime(end_date))
 ]
 
-# Ensure weather_df["Date"] is datetime
-weather_df["Date"] = pd.to_datetime(weather_df["Date"], errors='coerce')
-
-# Now safely filter
 weather_filtered = weather_df[
     (weather_df["Date"] >= pd.to_datetime(start_date)) &
     (weather_df["Date"] <= pd.to_datetime(end_date))
@@ -96,27 +105,23 @@ st.write("🛠️ Filtered Weather Data", weather_filtered)
 
 # === Only proceed if filtered data is not empty ===
 if not weather_filtered.empty:
-    # Ensure temperature columns are numeric (in case CSV loaded them as strings)
-    weather_filtered["Max Temp (F)"] = pd.to_numeric(weather_filtered["Max Temp (F)"], errors='coerce')
-    weather_filtered["Min Temp (F)"] = pd.to_numeric(weather_filtered["Min Temp (F)"], errors='coerce')
-
-    # Drop rows where temps are NaN
-    weather_filtered = weather_filtered.dropna(subset=["Max Temp (F)", "Min Temp (F)"])
+    # Drop rows with NaNs
+    weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
 
     if not weather_filtered.empty:
         # Max temp
-        max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
-        max_temp = max_temp_row["Max Temp (F)"]
+        max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
+        max_temp = max_temp_row["temp_max"]
         max_temp_date = max_temp_row["Date"]
 
         # Min temp
-        min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
-        min_temp = min_temp_row["Min Temp (F)"]
+        min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
+        min_temp = min_temp_row["temp_min"]
         min_temp_date = min_temp_row["Date"]
 
         # Display metrics
-        st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date))
-        st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date))
+        st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
+        st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))
     else:
         st.warning("No valid temperature data in selected range.")
 else:
@@ -147,7 +152,10 @@ else:
 
 # === Weather Charts ===
 st.subheader("☀️ Weather Trends")
-st.bar_chart(weather_filtered.set_index("Date")["Precipitation (in)"])
+if "precipitation" in weather_filtered.columns:
+    st.bar_chart(weather_filtered.set_index("Date")["precipitation"])
+else:
+    st.warning("Precipitation data not available.")
 
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌦️ Weather Trends (Detailed)")
