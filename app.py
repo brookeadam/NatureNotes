@@ -149,7 +149,6 @@ else:
 
 # === Weather Charts ===
 st.subheader("☀️ Weather Trends")
-st.line_chart(weather_filtered.set_index("Date")["Temperature Avg (F)"])
 st.bar_chart(weather_filtered.set_index("Date")["Precipitation (in)"])
 
 # === Altair Weather Trends (Detailed) ===
