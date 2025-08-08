@@ -99,7 +99,7 @@ min_temp_value = min_temp_row["Min Temp (F)"]
 min_temp_date = min_temp_row["Date"]
 
 # Display both as metrics
-col1, col2 = st.columns(2)
+col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric("Max Temp (°F)", f"{max_temp_value:.1f}", label_visibility="visible", help=f"on {max_temp_date.date()}")
 with col2:
