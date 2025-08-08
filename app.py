@@ -80,41 +80,46 @@ weather_filtered = weather_df[
     (weather_df["Date"] >= pd.to_datetime(start_date)) &
     (weather_df["Date"] <= pd.to_datetime(end_date))
 ]
-st.write("🛠️ Debug: Filtered Weather Data", weather_filtered)
 
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
-# === Metrics ===
-col1, col2, col3, col4 = st.columns(4)
+# === Filter the weather data ===
+weather_filtered = weather_df[
+    (weather_df["Date"] >= start_date) & (weather_df["Date"] <= end_date)
+]
 
-if not weather_filtered.empty and weather_filtered["Max Temp (F)"].notna().any():
-    max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
-    max_temp_value = max_temp_row["Max Temp (F)"]
-    max_temp_date = max_temp_row["Date"]
+# Debugging: show what we’re working with
+st.write("🛠️ Filtered Weather Data", weather_filtered)
+
+# === Only proceed if filtered data is not empty ===
+if not weather_filtered.empty:
+    # Ensure temperature columns are numeric (in case CSV loaded them as strings)
+    weather_filtered["Max Temp (F)"] = pd.to_numeric(weather_filtered["Max Temp (F)"], errors='coerce')
+    weather_filtered["Min Temp (F)"] = pd.to_numeric(weather_filtered["Min Temp (F)"], errors='coerce')
+
+    # Drop rows where temps are NaN
+    weather_filtered = weather_filtered.dropna(subset=["Max Temp (F)", "Min Temp (F)"])
+
+    if not weather_filtered.empty:
+        # Max temp
+        max_temp_row = weather_filtered.loc[weather_filtered["Max Temp (F)"].idxmax()]
+        max_temp = max_temp_row["Max Temp (F)"]
+        max_temp_date = max_temp_row["Date"]
+
+        # Min temp
+        min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
+        min_temp = min_temp_row["Min Temp (F)"]
+        min_temp_date = min_temp_row["Date"]
+
+        # Display metrics
+        st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date))
+        st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date))
+    else:
+        st.warning("No valid temperature data in selected range.")
 else:
-    max_temp_value = "—"
-    max_temp_date = "No data"
-
-if not weather_filtered.empty and weather_filtered["Min Temp (F)"].notna().any():
-    min_temp_row = weather_filtered.loc[weather_filtered["Min Temp (F)"].idxmin()]
-    min_temp_value = min_temp_row["Min Temp (F)"]
-    min_temp_date = min_temp_row["Date"]
-else:
-    min_temp_value = "—"
-    min_temp_date = "No data"
-
-# Display metrics
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Max Temp (F)", max_temp_value, help=str(max_temp_date))
-with col2:
-    st.metric("Min Temp (F)", min_temp_value, help=str(min_temp_date))
-with col3:
-    st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
-with col4:
-    st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))    
+    st.warning("No weather data available for the selected date range.")   
 
 # === Daily Species Observations ===
 st.subheader("📊 Daily Species Observations")
