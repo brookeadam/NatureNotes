@@ -18,21 +18,25 @@ def fetch_weather_data(lat, lon, start, end):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": start.strftime("%Y-%m-%d"),
-        "end_date": end.strftime("%Y-%m-%d"),
+        "start_date": start,
+        "end_date": end,
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
-        "timezone": "America/Chicago"
+        "timezone": "auto"
     }
+
     response = requests.get(url, params=params)
     data = response.json()
-    
-    df = pd.DataFrame({
-        "Date": pd.to_datetime(data["daily"]["time"]),
+
+    # Check if "daily" exists in response
+    if "daily" not in data or not data["daily"].get("time"):
+        return pd.DataFrame(columns=["Date", "Max Temp (°F)", "Min Temp (°F)", "Precipitation (in)"])
+
+    return pd.DataFrame({
+        "Date": data["daily"]["time"],
         "Max Temp (°F)": [t * 9/5 + 32 for t in data["daily"]["temperature_2m_max"]],
         "Min Temp (°F)": [t * 9/5 + 32 for t in data["daily"]["temperature_2m_min"]],
-        "Precipitation (in)": [p * 0.0393701 for p in data["daily"]["precipitation_sum"]]
+        "Precipitation (in)": [p / 25.4 for p in data["daily"]["precipitation_sum"]]
     })
-    return df
 
 # -----------------------------
 # EBIRD FETCH
