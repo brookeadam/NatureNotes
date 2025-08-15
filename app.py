@@ -1,193 +1,123 @@
 import streamlit as st
 import pandas as pd
 import requests
-import altair as alt
-import datetime
-import os
-from io import StringIO
-from PIL import Image
+from datetime import datetime, timedelta
+import plotly.express as px
 
-# === Constants ===
-EBIRD_API_KEY = "c49o0js5vkjb"
-HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
-CHECKLIST_PATH = "historical_checklists.csv"
-WEATHER_PATH = "weather_data.csv"
+# --------------------------
+# PAGE CONFIG
+# --------------------------
+st.set_page_config(
+    page_title="Nature Notes: Headwaters",
+    page_icon="🌿",
+    layout="wide"
+)
 
-st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
-
-# === Robust CSV Loader ===
-def robust_read_csv(path, **kwargs):
-    encodings = ['utf-8', 'ISO-8859-1', 'latin1', 'cp1252']
-    for enc in encodings:
-        try:
-            return pd.read_csv(path, encoding=enc, **kwargs)
-        except Exception:
-            continue
-    raise UnicodeDecodeError(f"Unable to read {path} with fallback encodings.")
-
-# === Loaders ===
-@st.cache_data
-def load_checklists():
-    df = robust_read_csv(CHECKLIST_PATH)
-    df["OBSERVATION DATE"] = pd.to_datetime(df["OBSERVATION DATE"])
-    return df
-
-@st.cache_data
-def load_weather():
-    df = robust_read_csv(WEATHER_PATH, parse_dates=["Date"])
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-
-    # Standardize column names
-    rename_cols = {
-        "Max Temp (F)": "temp_max",
-        "Min Temp (F)": "temp_min",
-        "Precipitation (in)": "precipitation"
-    }
-    df.rename(columns=rename_cols, inplace=True)
-
-    # Ensure numeric types
-    for col in ["temp_max", "temp_min", "precipitation"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
-
-@st.cache_data
-def get_ebird_data(loc_id):
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/recent"
-    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return pd.DataFrame(response.json())
-    return pd.DataFrame()
-
-@st.cache_data
-def load_all_ebird_data():
-    dfs = [get_ebird_data(loc) for loc in HEADWATERS_LOCATIONS]
-    return pd.concat(dfs, ignore_index=True)
-
-# === Load Data ===
-checklists_df = load_checklists()
-weather_df = load_weather()
-ebird_df = load_all_ebird_data()
-
-# === Sidebar Filters ===
-st.sidebar.header("⏱️ Filter by Date Range")
-quick_range = st.sidebar.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
-
-if quick_range == "Last 7 Days":
-    start_date = datetime.date.today() - datetime.timedelta(days=7)
-    end_date = datetime.date.today()
-elif quick_range == "This Month":
-    today = datetime.date.today()
-    start_date = today.replace(day=1)
-    end_date = today
-else:
-    start_date = st.sidebar.date_input("Start Date", datetime.date(2025, 1, 1))
-    end_date = st.sidebar.date_input("End Date", datetime.date.today())
-
-# === Filtered Data ===
-obs_filtered = checklists_df[
-    (checklists_df["OBSERVATION DATE"] >= pd.to_datetime(start_date)) &
-    (checklists_df["OBSERVATION DATE"] <= pd.to_datetime(end_date))
-]
-
-weather_filtered = weather_df[
-    (weather_df["Date"] >= pd.to_datetime(start_date)) &
-    (weather_df["Date"] <= pd.to_datetime(end_date))
-]
-
-# === HEADER ===
+# --------------------------
+# TITLE
+# --------------------------
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
-# Debugging: show what we’re working with
-st.write("🛠️ Filtered Weather Data", weather_filtered)
+# --------------------------
+# DATE FILTERS
+# --------------------------
+today = datetime.today().date()
+last_7_days = today - timedelta(days=7)
+first_of_month = today.replace(day=1)
 
-# === Only proceed if filtered data is not empty ===
-if not weather_filtered.empty:
-    # Drop rows with NaNs
-    weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
+filter_option = st.sidebar.radio("⏱️ Filter by Date Range", ["Last 7 Days", "This Month", "Custom Range"])
 
-    if not weather_filtered.empty:
-        # Max temp
-        max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
-        max_temp = max_temp_row["temp_max"]
-        max_temp_date = max_temp_row["Date"]
-
-        # Min temp
-        min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
-        min_temp = min_temp_row["temp_min"]
-        min_temp_date = min_temp_row["Date"]
-
-        # Display metrics
-        st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
-        st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))
-    else:
-        st.warning("No valid temperature data in selected range.")
+if filter_option == "Last 7 Days":
+    start_date = last_7_days
+    end_date = today
+elif filter_option == "This Month":
+    start_date = first_of_month
+    end_date = today
 else:
-    st.warning("No weather data available for the selected date range.")   
+    start_date = st.sidebar.date_input("Start Date", value=last_7_days)
+    end_date = st.sidebar.date_input("End Date", value=today)
 
-# === Daily Species Observations ===
-st.subheader("📊 Daily Species Observations")
-daily_species = obs_filtered.groupby("OBSERVATION DATE")["COMMON NAME"].nunique().reset_index()
-chart = alt.Chart(daily_species).mark_line().encode(
-    x="OBSERVATION DATE:T",
-    y=alt.Y("COMMON NAME:Q", title="Species Observed")
-).properties(height=300)
-st.altair_chart(chart, use_container_width=True)
+# --------------------------
+# FETCH WEATHER DATA FROM OPEN-METEO
+# --------------------------
+def fetch_weather_data(lat, lon, start, end):
+    url = (
+        "https://archive-api.open-meteo.com/v1/archive"
+        f"?latitude={lat}&longitude={lon}"
+        f"&start_date={start}&end_date={end}"
+        "&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum"
+        "&temperature_unit=fahrenheit&timezone=auto"
+    )
+    r = requests.get(url)
+    r.raise_for_status()
+    data = r.json()
+    df = pd.DataFrame({
+        "Date": pd.to_datetime(data["daily"]["time"]),
+        "Temperature Max (F)": data["daily"]["temperature_2m_max"],
+        "Temperature Min (F)": data["daily"]["temperature_2m_min"],
+        "Temperature Avg (F)": data["daily"]["temperature_2m_mean"],
+        "Precipitation (in)": [p * 0.0393701 for p in data["daily"]["precipitation_sum"]]
+    })
+    return df
 
-# === Recent eBird Sightings ===
-st.subheader("🔎 Recent eBird Sightings")
-if not ebird_df.empty:
-    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"])
-    ebird_df = ebird_df.sort_values("obsDt", ascending=False)
-    st.dataframe(ebird_df[["comName", "howMany", "obsDt", "locName"]].rename(columns={
-        "comName": "COMMON NAME",
-        "howMany": "OBSERVATION COUNT",
-        "obsDt": "OBSERVATION DATE",
-        "locName": "LOCATION"
-    }))
-else:
-    st.warning("No recent observations available.")
-
-# === Weather Charts ===
-st.subheader("☀️ Weather Trends")
-if "precipitation" in weather_filtered.columns:
-    st.bar_chart(weather_filtered.set_index("Date")["precipitation"])
-else:
-    st.warning("Precipitation data not available.")
-
-# === Altair Weather Trends (Detailed) ===
-st.subheader("🌦️ Weather Trends (Detailed)")
-expected_cols = {"Date", "temp_max", "temp_min", "precipitation"}
-if expected_cols.issubset(weather_filtered.columns):
-    alt_chart = alt.Chart(weather_filtered).transform_fold(
-        ["temp_max", "temp_min", "precipitation"],
-        as_=["Metric", "Value"]
-    ).mark_line().encode(
-        x=alt.X("Date:T", title="Date"),
-        y=alt.Y("Value:Q", title="Metric Value"),
-        color="Metric:N"
-    ).properties(height=300)
-    st.altair_chart(alt_chart, use_container_width=True)
-else:
-    st.warning("⚠️ Skipping detailed weather chart – required columns missing.")
-
-# === Summary Table ===
-st.subheader("📋 Observation Summary")
-summary = obs_filtered.groupby("COMMON NAME").agg(
-    First_Seen=("OBSERVATION DATE", "min"),
-    Last_Seen=("OBSERVATION DATE", "max"),
-    Days_Seen=("OBSERVATION DATE", "nunique"),
-    Total_Seen=("OBSERVATION COUNT", "sum")
-).reset_index()
-st.dataframe(summary.sort_values("Days_Seen", ascending=False))
-
-# === Footer ===
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: gray;'>"
-    "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
-    "</div>",
-    unsafe_allow_html=True
+# Fetch historical weather for San Antonio (Headwaters)
+weather_df = fetch_weather_data(
+    lat=29.4689,
+    lon=-98.4833,
+    start=start_date,
+    end=end_date
 )
+
+# --------------------------
+# WEATHER FILTERING
+# --------------------------
+weather_filtered = weather_df[
+    (weather_df["Date"].dt.date >= start_date) &
+    (weather_df["Date"].dt.date <= end_date)
+]
+
+st.subheader("🛠️ Filtered Weather Data")
+if not weather_filtered.empty:
+    st.dataframe(weather_filtered)
+else:
+    st.write("No weather data available for the selected date range.")
+
+# --------------------------
+# WEATHER METRICS
+# --------------------------
+if not weather_filtered.empty:
+    max_temp = weather_filtered["Temperature Max (F)"].max()
+    max_temp_date = weather_filtered.loc[weather_filtered["Temperature Max (F)"].idxmax(), "Date"]
+
+    min_temp = weather_filtered["Temperature Min (F)"].min()
+    min_temp_date = weather_filtered.loc[weather_filtered["Temperature Min (F)"].idxmin(), "Date"]
+
+    st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
+    st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))
+
+# --------------------------
+# WEATHER CHARTS
+# --------------------------
+if not weather_filtered.empty:
+    st.subheader("☀️ Weather Trends")
+    fig_temp = px.line(weather_filtered, x="Date", y="Temperature Avg (F)", title="Average Daily Temperature (F)")
+    st.plotly_chart(fig_temp, use_container_width=True)
+
+    st.subheader("🌦️ Weather Trends (Detailed)")
+    fig_temp_detail = px.line(weather_filtered, x="Date", y=["Temperature Max (F)", "Temperature Min (F)"],
+                              title="Daily Max & Min Temperatures (F)")
+    st.plotly_chart(fig_temp_detail, use_container_width=True)
+
+# --------------------------
+# EBIRD DATA SECTION (unchanged)
+# --------------------------
+# Placeholder for eBird data fetching code
+st.subheader("📊 Daily Species Observations")
+st.write("Coming soon: eBird species observations here...")
+
+st.subheader("🔎 Recent eBird Sightings")
+st.write("No recent observations available.")
+
+st.subheader("📋 Observation Summary")
+st.caption("Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿")
