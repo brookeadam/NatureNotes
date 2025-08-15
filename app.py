@@ -131,6 +131,59 @@ if not ebird_df.empty:
 else:
     st.warning("No bird observation data available.")
 
+# === Species Count Comparison ===
+st.subheader("📅 Species Count Comparison")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("**Date Range A**")
+    range_a_start = st.date_input("Start Date (A)", datetime.date(2025, 8, 1), key="a_start")
+    range_a_end = st.date_input("End Date (A)", datetime.date(2025, 8, 31), key="a_end")
+
+with col2:
+    st.markdown("**Date Range B**")
+    range_b_start = st.date_input("Start Date (B)", datetime.date(2023, 8, 1), key="b_start")
+    range_b_end = st.date_input("End Date (B)", datetime.date(2023, 8, 31), key="b_end")
+
+def get_range_data(start, end):
+    df = load_all_ebird_data(start, end)
+    if df.empty:
+        return pd.DataFrame(), 0, 0
+    df["obsDt"] = pd.to_datetime(df["obsDt"])
+    df_filtered = df[(df["obsDt"].dt.date >= start) & (df["obsDt"].dt.date <= end)]
+    species_count = df_filtered["comName"].nunique()
+    total_birds = df_filtered["howMany"].sum()
+    species_table = df_filtered.groupby("comName")["howMany"].sum().reset_index()
+    species_table.columns = ["Species", "Count"]
+    return species_table, species_count, total_birds
+
+# Get both ranges
+table_a, species_a, total_a = get_range_data(range_a_start, range_a_end)
+table_b, species_b, total_b = get_range_data(range_b_start, range_b_end)
+
+# Show summary metrics
+col1, col2 = st.columns(2)
+with col1:
+    st.metric(f"Unique Species ({range_a_start} → {range_a_end})", species_a)
+    st.metric(f"Total Bird Count ({range_a_start} → {range_a_end})", total_a)
+with col2:
+    st.metric(f"Unique Species ({range_b_start} → {range_b_end})", species_b)
+    st.metric(f"Total Bird Count ({range_b_start} → {range_b_end})", total_b)
+
+# Merge for comparison table
+if not table_a.empty or not table_b.empty:
+    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer", suffixes=("", ""))
+    comparison_df = comparison_df.fillna(0)
+    comparison_df.columns = [
+        "Species",
+        f"{range_a_start} → {range_a_end}",
+        f"{range_b_start} → {range_b_end}"
+    ]
+    st.dataframe(comparison_df.sort_values("Species"))
+else:
+    st.info("No data available for one or both selected date ranges.")
+
 # === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
 if not ebird_df.empty:
