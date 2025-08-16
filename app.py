@@ -190,7 +190,7 @@ st.subheader("🔎 Recent eBird Sightings")
 if not ebird_df.empty:
     ebird_df = ebird_df.sort_values("obsDt", ascending=False)
     st.dataframe(
-        ebird_df[["comName", "howMany", "obsDt", "locName"]]
+        ebird_df[["comName", "howMany", "obsDt"]]
         .rename(columns={
             "comName": "COMMON NAME",
             "howMany": "OBSERVATION COUNT",
