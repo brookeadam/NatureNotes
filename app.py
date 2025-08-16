@@ -111,78 +111,59 @@ if not weather_filtered.empty:
         st.warning("No valid temperature data in selected range.")
 else:
     st.warning("No weather data available for the selected date range.")   
-
-# === Daily Species Observations ===
-if not ebird_df.empty:
-    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"])
-    obs_filtered = ebird_df[
-        (ebird_df["obsDt"].dt.date >= start_date) &
-        (ebird_df["obsDt"].dt.date <= end_date)
-    ]
-    daily_species = obs_filtered.groupby(obs_filtered["obsDt"].dt.date)["comName"].nunique().reset_index()
-    daily_species.columns = ["OBSERVATION DATE", "Species Observed"]
-
-    st.subheader("📊 Daily Species Observations")
-    chart = alt.Chart(daily_species).mark_line().encode(
-        x="OBSERVATION DATE:T",
-        y=alt.Y("Species Observed:Q", title="Species Observed")
-    ).properties(height=300)
-    st.altair_chart(chart, use_container_width=True)
-else:
-    st.warning("No bird observation data available.")
-
+    
 # === Species Count Comparison ===
-st.subheader("📅 Species Count Comparison")
+st.subheader("📊 Species Comparison Between Date Ranges")
 
 col1, col2 = st.columns(2)
-
 with col1:
-    st.markdown("**Date Range A**")
-    range_a_start = st.date_input("Start Date (A)", datetime.date(2025, 8, 1), key="a_start")
-    range_a_end = st.date_input("End Date (A)", datetime.date(2025, 8, 31), key="a_end")
-
+    range1_start = st.date_input("Range 1 Start", datetime(2023, 8, 1))
+    range1_end = st.date_input("Range 1 End", datetime(2023, 8, 31))
 with col2:
-    st.markdown("**Date Range B**")
-    range_b_start = st.date_input("Start Date (B)", datetime.date(2023, 8, 1), key="b_start")
-    range_b_end = st.date_input("End Date (B)", datetime.date(2023, 8, 31), key="b_end")
+    range2_start = st.date_input("Range 2 Start", datetime(2025, 8, 1))
+    range2_end = st.date_input("Range 2 End", datetime(2025, 8, 31))
 
-def get_range_data(start, end):
-    df = load_all_ebird_data(start, end)
-    if df.empty:
-        return pd.DataFrame(), 0, 0
-    df["obsDt"] = pd.to_datetime(df["obsDt"])
-    df_filtered = df[(df["obsDt"].dt.date >= start) & (df["obsDt"].dt.date <= end)]
-    species_count = df_filtered["comName"].nunique()
-    total_birds = df_filtered["howMany"].sum()
-    species_table = df_filtered.groupby("comName")["howMany"].sum().reset_index()
-    species_table.columns = ["Species", "Count"]
-    return species_table, species_count, total_birds
+df_range1 = fetch_ebird_data(loc_ids, str(range1_start), str(range1_end), api_key)
+df_range2 = fetch_ebird_data(loc_ids, str(range2_start), str(range2_end), api_key)
 
-# Get both ranges
-table_a, species_a, total_a = get_range_data(range_a_start, range_a_end)
-table_b, species_b, total_b = get_range_data(range_b_start, range_b_end)
+if not df_range1.empty and not df_range2.empty:
+    # Unique species count
+    species_count_1 = df_range1["comName"].nunique()
+    species_count_2 = df_range2["comName"].nunique()
 
-# Show summary metrics
-col1, col2 = st.columns(2)
-with col1:
-    st.metric(f"Unique Species ({range_a_start} → {range_a_end})", species_a)
-    st.metric(f"Total Bird Count ({range_a_start} → {range_a_end})", total_a)
-with col2:
-    st.metric(f"Unique Species ({range_b_start} → {range_b_end})", species_b)
-    st.metric(f"Total Bird Count ({range_b_start} → {range_b_end})", total_b)
+    # Total bird count
+    total_count_1 = df_range1["howMany"].sum()
+    total_count_2 = df_range2["howMany"].sum()
 
-# Merge for comparison table
-if not table_a.empty or not table_b.empty:
-    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer", suffixes=("", ""))
-    comparison_df = comparison_df.fillna(0)
-    comparison_df.columns = [
-        "Species",
-        f"{range_a_start} → {range_a_end}",
-        f"{range_b_start} → {range_b_end}"
-    ]
-    st.dataframe(comparison_df.sort_values("Species"))
-else:
-    st.info("No data available for one or both selected date ranges.")
+    st.markdown(
+        f"""
+        **Range 1 ({range1_start} → {range1_end}):** {species_count_1} species, {total_count_1} birds  
+        **Range 2 ({range2_start} → {range2_end}):** {species_count_2} species, {total_count_2} birds
+        """
+    )
+
+    # Species-level comparison
+    table_a = df_range1.groupby("comName")["howMany"].sum().reset_index()
+    table_a.rename(columns={"howMany": f"Bird Count ({range1_start} → {range1_end})"}, inplace=True)
+
+    table_b = df_range2.groupby("comName")["howMany"].sum().reset_index()
+    table_b.rename(columns={"howMany": f"Bird Count ({range2_start} → {range2_end})"}, inplace=True)
+
+    comparison_df = pd.merge(table_a, table_b, on="comName", how="outer").fillna(0)
+    comparison_df["Difference"] = (
+        comparison_df.iloc[:, 2] - comparison_df.iloc[:, 1]
+    ).astype(int)
+
+    # Color function
+    def highlight_diff(val):
+        if val > 0:
+            return "background-color: lightgreen"
+        elif val < 0:
+            return "background-color: salmon"
+        else:
+            return "background-color: white"
+
+    st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
 
 # === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
