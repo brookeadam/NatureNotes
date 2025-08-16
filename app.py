@@ -126,31 +126,26 @@ else:
 # === Species Count Comparison ===
 st.markdown("## 📊 Species and Weather Comparison by Date Range")
 
-col1, col2 = st.columns(2)
-with col1:
-    start_a = st.date_input("Start Date (Range A)", pd.to_datetime("2023-08-01"))
-    end_a = st.date_input("End Date (Range A)", pd.to_datetime("2023-08-31"))
-with col2:
-    start_b = st.date_input("Start Date (Range B)", pd.to_datetime("2025-08-01"))
-    end_b = st.date_input("End Date (Range B)", pd.to_datetime("2025-08-31"))
+date_range_a = st.date_input("Select Range A", [])
+date_range_b = st.date_input("Select Range B", [])
 
 if st.button("Compare Species and Weather"):
     
     # Filter data
-    range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
-    range_b = merged_df[(merged_df["Date"] >= pd.to_datetime(start_b)) & (merged_df["Date"] <= pd.to_datetime(end_b))]
+    date_range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
+    date_range_b = merged_df[(merged_df["Date"] >= pd.to_datetime(start_b)) & (merged_df["Date"] <= pd.to_datetime(end_b))]
 
     # Unique species counts
-    unique_species_a = range_a["Species"].nunique()
-    unique_species_b = range_b["Species"].nunique()
+    unique_species_a = date_range_a["Species"].nunique()
+    unique_species_b = date_range_b["Species"].nunique()
 
     # Total bird counts
-    total_birds_a = range_a["Count"].sum()
-    total_birds_b = range_b["Count"].sum()
+    total_birds_a = date_range_a["Count"].sum()
+    total_birds_b = dare_range_b["Count"].sum()
 
     # Bird count per species
-    table_a = range_a.groupby("Species")["Count"].sum().reset_index()
-    table_b = range_b.groupby("Species")["Count"].sum().reset_index()
+    table_a = date_range_a.groupby("Species")["Count"].sum().reset_index()
+    table_b = date_range_b.groupby("Species")["Count"].sum().reset_index()
 
     # Rename columns based on selected date ranges
     col_a = f"Birds {start_a.strftime('%b %Y')}–{end_a.strftime('%b %Y')}"
@@ -184,9 +179,6 @@ if st.button("Compare Species and Weather"):
     # Display comparison table
     st.markdown("### 🐦 Species Comparison Table")
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
-
-date_range_a = st.date_input("Select Range A", [])
-date_range_b = st.date_input("Select Range B", [])
 
 # Save to session_state so other sections can use them
 if date_range_a and len(date_range_a) == 2:
