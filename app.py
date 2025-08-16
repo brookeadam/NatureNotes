@@ -196,7 +196,11 @@ if not ebird_df.empty:
         "locName": "LOCATION"
     }))
 else:
-    st.warning("No recent observations available.")
+   st.warning("No recent observations available.")
+
+# Hide index so table starts with "Common Name"
+st.dataframe(recent_df.reset_index(drop=True), use_container_width=True)
+
 
 # === Weather Charts ===
 st.subheader("☀️ Weather Trends")
