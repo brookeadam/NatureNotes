@@ -190,28 +190,18 @@ st.subheader("🔎 Recent eBird Sightings")
 if not ebird_df.empty:
     ebird_df = ebird_df.sort_values("obsDt", ascending=False)
     st.dataframe(
-        ebird_df[["comName", "howMany", "obsDt"]]
+        ebird_df[["comName", "sciName", "howMany", "obsDt"]]
         .rename(columns={
             "comName": "COMMON NAME",
+            "sciName": "SCIENTIFIC NAME",
             "howMany": "OBSERVATION COUNT",
             "obsDt": "OBSERVATION DATE",
         })
-        .reset_index(drop=True)
+        .reset_index(drop=True),
+        use_container_width=True
     )
 else:
     st.warning("No recent observations available.")
-
-# Use sightings_df if it exists, otherwise fallback to merged_df
-if "sightings_df" in locals():
-    df_recent = sightings_df
-else:
-    df_recent = merged_df
-
-if not df_recent.empty:
-    # Drop the index so the table starts with "Common Name"
-    st.dataframe(df_recent.reset_index(drop=True), use_container_width=True)
-else:
-    st.info("No recent sightings available for the selected date range.")
 
 # === Weather Charts ===
 st.subheader("☀️ Weather Trends")
