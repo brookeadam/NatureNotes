@@ -199,7 +199,7 @@ if not ebird_df.empty:
         .reset_index(drop=True)
     )
 else:
-    st.warning("No recent observations available.")st.subheader("Recent eBird Sightings")
+    st.warning("No recent observations available.")
 
 # Use sightings_df if it exists, otherwise fallback to merged_df
 if "sightings_df" in locals():
