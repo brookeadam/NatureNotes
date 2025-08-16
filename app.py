@@ -188,9 +188,15 @@ if st.button("Compare Species"):
 # === Recent eBird Sightings ===
 st.subheader("Recent eBird Sightings")
 
-if not sightings_df.empty:
+# Use sightings_df if it exists, otherwise fallback to merged_df
+if "sightings_df" in locals():
+    df_recent = sightings_df
+else:
+    df_recent = merged_df
+
+if not df_recent.empty:
     # Drop the index so the table starts with "Common Name"
-    st.dataframe(sightings_df.reset_index(drop=True), use_container_width=True)
+    st.dataframe(df_recent.reset_index(drop=True), use_container_width=True)
 else:
     st.info("No recent sightings available for the selected date range.")
 # === Weather Charts ===
