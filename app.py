@@ -113,56 +113,65 @@ else:
     st.warning("No weather data available for the selected date range.")   
     
 # === Species Count Comparison ===
-st.subheader("📊 Species Comparison Between Date Ranges")
+st.markdown("## 📊 Species Comparison by Date Range")
 
 col1, col2 = st.columns(2)
 with col1:
-    range1_start = st.date_input("Range 1 Start", datetime(2023, 8, 1))
-    range1_end = st.date_input("Range 1 End", datetime(2023, 8, 31))
+    start_a = st.date_input("Start Date (Range A)", pd.to_datetime("2023-08-01"))
+    end_a = st.date_input("End Date (Range A)", pd.to_datetime("2023-08-31"))
 with col2:
-    range2_start = st.date_input("Range 2 Start", datetime(2025, 8, 1))
-    range2_end = st.date_input("Range 2 End", datetime(2025, 8, 31))
+    start_b = st.date_input("Start Date (Range B)", pd.to_datetime("2025-08-01"))
+    end_b = st.date_input("End Date (Range B)", pd.to_datetime("2025-08-31"))
 
-df_range1 = fetch_ebird_data(loc_ids, str(range1_start), str(range1_end), api_key)
-df_range2 = fetch_ebird_data(loc_ids, str(range2_start), str(range2_end), api_key)
+if st.button("Compare Species"):
+    
+    # Filter data
+    range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
+    range_b = merged_df[(merged_df["Date"] >= pd.to_datetime(start_b)) & (merged_df["Date"] <= pd.to_datetime(end_b))]
 
-if not df_range1.empty and not df_range2.empty:
-    # Unique species count
-    species_count_1 = df_range1["comName"].nunique()
-    species_count_2 = df_range2["comName"].nunique()
+    # Unique species counts
+    unique_species_a = range_a["Species"].nunique()
+    unique_species_b = range_b["Species"].nunique()
 
-    # Total bird count
-    total_count_1 = df_range1["howMany"].sum()
-    total_count_2 = df_range2["howMany"].sum()
+    # Total bird counts
+    total_birds_a = range_a["Count"].sum()
+    total_birds_b = range_b["Count"].sum()
 
-    st.markdown(
-        f"""
-        **Range 1 ({range1_start} → {range1_end}):** {species_count_1} species, {total_count_1} birds  
-        **Range 2 ({range2_start} → {range2_end}):** {species_count_2} species, {total_count_2} birds
-        """
-    )
+    # Bird count per species
+    table_a = range_a.groupby("Species")["Count"].sum().reset_index()
+    table_b = range_b.groupby("Species")["Count"].sum().reset_index()
 
-    # Species-level comparison
-    table_a = df_range1.groupby("comName")["howMany"].sum().reset_index()
-    table_a.rename(columns={"howMany": f"Bird Count ({range1_start} → {range1_end})"}, inplace=True)
+    # Rename columns based on selected date ranges
+    col_a = f"Birds {start_a.strftime('%b %Y')}–{end_a.strftime('%b %Y')}"
+    col_b = f"Birds {start_b.strftime('%b %Y')}–{end_b.strftime('%b %Y')}"
+    table_a.rename(columns={"Count": col_a}, inplace=True)
+    table_b.rename(columns={"Count": col_b}, inplace=True)
 
-    table_b = df_range2.groupby("comName")["howMany"].sum().reset_index()
-    table_b.rename(columns={"howMany": f"Bird Count ({range2_start} → {range2_end})"}, inplace=True)
+    # Merge
+    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer").fillna(0)
 
-    comparison_df = pd.merge(table_a, table_b, on="comName", how="outer").fillna(0)
-    comparison_df["Difference"] = (
-        comparison_df.iloc[:, 2] - comparison_df.iloc[:, 1]
-    ).astype(int)
+    # Calculate difference
+    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
 
-    # Color function
+    # Sort: increases on top, decreases on bottom
+    comparison_df = comparison_df.sort_values("Difference", ascending=False)
+
+    # Color coding
     def highlight_diff(val):
         if val > 0:
             return "background-color: lightgreen"
         elif val < 0:
-            return "background-color: salmon"
+            return "background-color: lightcoral"
         else:
             return "background-color: white"
 
+    # Display summary
+    st.markdown("### 🔢 Summary")
+    st.write(f"**Range A:** {unique_species_a} unique species, {total_birds_a} total birds")
+    st.write(f"**Range B:** {unique_species_b} unique species, {total_birds_b} total birds")
+
+    # Display comparison table
+    st.markdown("### 🐦 Species Comparison Table")
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
 
 # === Recent eBird Sightings ===
