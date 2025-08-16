@@ -216,20 +216,56 @@ else:
 
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌦️ Weather Trends (Detailed)")
-expected_cols = {"Date", "temp_max", "temp_min", "precipitation"}
-if expected_cols.issubset(weather_filtered.columns):
-    alt_chart = alt.Chart(weather_filtered).transform_fold(
-        ["temp_max", "temp_min", "precipitation"],
-        as_=["Metric", "Value"]
-    ).mark_line().encode(
-        x=alt.X("Date:T", title="Date"),
-        y=alt.Y("Value:Q", title="Metric Value"),
-        color="Metric:N"
-    ).properties(height=300)
-    st.altair_chart(alt_chart, use_container_width=True)
-else:
-    st.warning("⚠️ Skipping detailed weather chart – required columns missing.")
 
+if "date_range_a" in st.session_state and "date_range_b" in st.session_state:
+    range_a = st.session_state["date_range_a"]
+    range_b = st.session_state["date_range_b"]
+
+    # Filter merged_df by date range for A and B
+    weather_a = merged_df[
+        (merged_df["date"] >= range_a[0]) & (merged_df["date"] <= range_a[1])
+    ].copy()
+
+    weather_b = merged_df[
+        (merged_df["date"] >= range_b[0]) & (merged_df["date"] <= range_b[1])
+    ].copy()
+
+    def format_weather(df):
+        # Rename columns
+        df = df.reset_index(drop=True).rename(columns={
+            "date": "DATE",
+            "temp": "TEMPERATURE (°F)",
+            "precip": "PRECIPITATION (in)",
+            "wind": "WIND SPEED (mph)"
+        })
+
+        if not df.empty:
+            summary = {
+                "DATE": "Summary",
+                "TEMPERATURE (°F)": f"Max: {df['TEMPERATURE (°F)'].max()} | Min: {df['TEMPERATURE (°F)'].min()}",
+                "PRECIPITATION (in)": round(df["PRECIPITATION (in)"].sum(), 2),
+                "WIND SPEED (mph)": "-"
+            }
+            df = pd.concat([df, pd.DataFrame([summary])], ignore_index=True)
+
+        return df
+
+    weather_a = format_weather(weather_a)
+    weather_b = format_weather(weather_b)
+
+    # Show side-by-side tables
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Range A Weather Data**")
+        st.dataframe(weather_a, use_container_width=True)
+
+    with col2:
+        st.markdown("**Range B Weather Data**")
+        st.dataframe(weather_b, use_container_width=True)
+
+else:
+    st.info("Select two date ranges above to compare detailed weather data.")
 # === Footer ===
 st.markdown("---")
 st.markdown(
