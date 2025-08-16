@@ -186,10 +186,11 @@ if st.button("Compare Species"):
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
 
 # === Recent eBird Sightings ===
+# === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
 if not ebird_df.empty:
     ebird_df = ebird_df.sort_values("obsDt", ascending=False)
-    st.dataframe(
+    table_df = (
         ebird_df[["comName", "sciName", "howMany", "obsDt"]]
         .rename(columns={
             "comName": "COMMON NAME",
@@ -197,9 +198,11 @@ if not ebird_df.empty:
             "howMany": "OBSERVATION COUNT",
             "obsDt": "OBSERVATION DATE",
         })
-        .reset_index(drop=True),
-        use_container_width=True
+        .reset_index(drop=True)
     )
+
+    # Use st.table instead of st.dataframe to hide the index
+    st.table(table_df)
 else:
     st.warning("No recent observations available.")
 
