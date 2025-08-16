@@ -186,21 +186,13 @@ if st.button("Compare Species"):
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
 
 # === Recent eBird Sightings ===
-st.subheader("🔎 Recent eBird Sightings")
-if not ebird_df.empty:
-    ebird_df = ebird_df.sort_values("obsDt", ascending=False)
-    st.dataframe(ebird_df[["comName", "howMany", "obsDt", "locName"]].rename(columns={
-        "comName": "COMMON NAME",
-        "howMany": "OBSERVATION COUNT",
-        "obsDt": "OBSERVATION DATE",
-        "locName": "LOCATION"
-    }))
+st.subheader("Recent eBird Sightings")
+
+if not recent_df.empty:
+    # Drop the index so the table starts with "Common Name"
+    st.dataframe(recent_df.reset_index(drop=True), use_container_width=True)
 else:
-   st.warning("No recent observations available.")
-
-# Hide index so table starts with "Common Name"
-st.dataframe(recent_df.reset_index(drop=True), use_container_width=True)
-
+    st.info("No recent sightings available for the selected date range.")
 
 # === Weather Charts ===
 st.subheader("☀️ Weather Trends")
