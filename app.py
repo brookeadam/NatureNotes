@@ -186,23 +186,24 @@ if st.button("Compare Species"):
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
 
 # === Recent eBird Sightings ===
-# === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
 if not ebird_df.empty:
-    ebird_df = ebird_df.sort_values("obsDt", ascending=False)
-    table_df = (
-        ebird_df[["comName", "sciName", "howMany", "obsDt"]]
-        .rename(columns={
-            "comName": "COMMON NAME",
-            "sciName": "SCIENTIFIC NAME",
-            "howMany": "OBSERVATION COUNT",
-            "obsDt": "OBSERVATION DATE",
-        })
-        .reset_index(drop=True)
-    )
+    ebird_df = ebird_df.sort_values("obsDt", ascending=False).copy()
 
-    # Use st.table instead of st.dataframe to hide the index
-    st.table(table_df)
+    # Convert obsDt to datetime and format as YYYY-MM-DD
+    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"]).dt.strftime("%Y-%m-%d")
+
+    table_df = ebird_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
+        "comName": "COMMON NAME",
+        "sciName": "SCIENTIFIC NAME",
+        "howMany": "OBSERVATION COUNT",
+        "obsDt": "OBSERVATION DATE",
+    })
+
+    # Force left alignment on all columns
+    styled_table = table_df.style.set_properties(**{'text-align': 'left'})
+
+    st.dataframe(styled_table, use_container_width=True)
 else:
     st.warning("No recent observations available.")
 
