@@ -126,26 +126,31 @@ else:
 # === Species Count Comparison ===
 st.markdown("## 📊 Species and Weather Comparison by Date Range")
 
-date_range_a = st.date_input("Select Range A", [])
-date_range_b = st.date_input("Select Range B", [])
+col1, col2 = st.columns(2)
+with col1:
+    range1_start = st.date_input("Range 1 Start")
+    range1_end = st.date_input("Range 1 End")
+with col2:
+    range2_start = st.date_input("Range 2 Start")
+    range2_end = st.date_input("Range 2 End")
 
 if st.button("Compare Species and Weather"):
     
     # Filter data
-    date_range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
-    date_range_b = merged_df[(merged_df["Date"] >= pd.to_datetime(start_b)) & (merged_df["Date"] <= pd.to_datetime(end_b))]
+    range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
+    range_b = merged_df[(merged_df["Date"] >= pd.to_datetime(start_b)) & (merged_df["Date"] <= pd.to_datetime(end_b))]
 
     # Unique species counts
-    unique_species_a = date_range_a["Species"].nunique()
-    unique_species_b = date_range_b["Species"].nunique()
+    unique_species_a = range_a["Species"].nunique()
+    unique_species_b = range_b["Species"].nunique()
 
     # Total bird counts
-    total_birds_a = date_range_a["Count"].sum()
-    total_birds_b = dare_range_b["Count"].sum()
+    total_birds_a = range_a["Count"].sum()
+    total_birds_b = range_b["Count"].sum()
 
     # Bird count per species
-    table_a = date_range_a.groupby("Species")["Count"].sum().reset_index()
-    table_b = date_range_b.groupby("Species")["Count"].sum().reset_index()
+    table_a = range_a.groupby("Species")["Count"].sum().reset_index()
+    table_b = range_b.groupby("Species")["Count"].sum().reset_index()
 
     # Rename columns based on selected date ranges
     col_a = f"Birds {start_a.strftime('%b %Y')}–{end_a.strftime('%b %Y')}"
@@ -181,11 +186,11 @@ if st.button("Compare Species and Weather"):
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
 
 # Save to session_state so other sections can use them
-if date_range_a and len(date_range_a) == 2:
-    st.session_state["date_range_a"] = date_range_a
+if range_a and len(range_a) == 2:
+    st.session_state["range_a"] = range_a
 
-if date_range_b and len(date_range_b) == 2:
-    st.session_state["date_range_b"] = date_range_b
+if range_b and len(range_b) == 2:
+    st.session_state["range_b"] = range_b
 
 
 # === Recent eBird Sightings ===
@@ -210,19 +215,12 @@ if not ebird_df.empty:
 else:
     st.warning("No recent observations available.")
 
-# === Weather Charts ===
-st.subheader("☀️ Weather Trends")
-if "precipitation" in weather_filtered.columns:
-    st.bar_chart(weather_filtered.set_index("Date")["precipitation"])
-else:
-    st.warning("Precipitation data not available.")
-
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌦️ Weather Trends (Detailed)")
 
-if "date_range_a" in st.session_state and "date_range_b" in st.session_state:
-    range_a = st.session_state["date_range_a"]
-    range_b = st.session_state["date_range_b"]
+if "range_a" in st.session_state and "range_b" in st.session_state:
+    range_a = st.session_state["range_a"]
+    range_b = st.session_state["range_b"]
 
     # Filter merged_df by date range for A and B
     weather_a = merged_df[
