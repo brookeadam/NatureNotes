@@ -188,12 +188,11 @@ if st.button("Compare Species"):
 # === Recent eBird Sightings ===
 st.subheader("Recent eBird Sightings")
 
-if not recent_df.empty:
+if not sightings_df.empty:
     # Drop the index so the table starts with "Common Name"
-    st.dataframe(recent_df.reset_index(drop=True), use_container_width=True)
+    st.dataframe(sightings_df.reset_index(drop=True), use_container_width=True)
 else:
     st.info("No recent sightings available for the selected date range.")
-
 # === Weather Charts ===
 st.subheader("☀️ Weather Trends")
 if "precipitation" in weather_filtered.columns:
