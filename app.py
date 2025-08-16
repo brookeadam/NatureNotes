@@ -124,7 +124,7 @@ else:
     st.warning("No weather data available for the selected date range.")   
     
 # === Species Count Comparison ===
-st.markdown("## 📊 Species Comparison by Date Range")
+st.markdown("## 📊 Species and Weather Comparison by Date Range")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -134,7 +134,7 @@ with col2:
     start_b = st.date_input("Start Date (Range B)", pd.to_datetime("2025-08-01"))
     end_b = st.date_input("End Date (Range B)", pd.to_datetime("2025-08-31"))
 
-if st.button("Compare Species"):
+if st.button("Compare Species and Weather"):
     
     # Filter data
     range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
@@ -184,6 +184,17 @@ if st.button("Compare Species"):
     # Display comparison table
     st.markdown("### 🐦 Species Comparison Table")
     st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
+
+date_range_a = st.date_input("Select Range A", [])
+date_range_b = st.date_input("Select Range B", [])
+
+# Save to session_state so other sections can use them
+if date_range_a and len(date_range_a) == 2:
+    st.session_state["date_range_a"] = date_range_a
+
+if date_range_b and len(date_range_b) == 2:
+    st.session_state["date_range_b"] = date_range_b
+
 
 # === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
