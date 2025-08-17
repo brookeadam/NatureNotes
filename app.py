@@ -189,15 +189,15 @@ if "range_a" in st.session_state and "range_b" in st.session_state:
     st.write(f"**Range B:** {unique_species_b} unique species, {total_birds_b} total birds")  
 
     # Species comparison table  
-    table_a = range_a_birds.groupby("Species")["Count"].sum().reset_index()  
-    table_b = range_b_birds.groupby("Species")["Count"].sum().reset_index()  
+    table_a = range_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()  
+    table_b = range_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()  
 
     col_a = f"Birds {range1_start}–{range1_end}"  
     col_b = f"Birds {range2_start}–{range2_end}"  
     table_a.rename(columns={"Count": col_a}, inplace=True)  
     table_b.rename(columns={"Count": col_b}, inplace=True)  
 
-    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer").fillna(0)  
+    comparison_df = pd.merge(table_a, table_b, on=["Species", "Scientific Name"], how="outer").fillna(0)  
     comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]  
 
     st.markdown("### 🐦 Species Comparison Table")  
