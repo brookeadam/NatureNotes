@@ -126,6 +126,20 @@ else:
 
 # === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
+st.subheader("⏱️ Filter by Date Range")
+quick_range = st.sidebar.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
+
+if quick_range == "Last 7 Days":
+    start_date = datetime.date.today() - datetime.timedelta(days=7)
+    end_date = datetime.date.today()
+elif quick_range == "This Month":
+    today = datetime.date.today()
+    start_date = today.replace(day=1)
+    end_date = today
+else:
+    start_date = st.sidebar.date_input("Start Date", datetime.date(2025, 1, 1))
+    end_date = st.sidebar.date_input("End Date", datetime.date.today())
+
 if not ebird_df.empty:
     ebird_df = ebird_df.sort_values("obsDt", ascending=False).copy()
 
@@ -200,6 +214,9 @@ if "range_a" in st.session_state and "range_b" in st.session_state:
 
     comparison_df = pd.merge(table_a, table_b, on=["Species", "Scientific Name"], how="outer").fillna(0)  
     comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]  
+
+     # Force left alignment on all columns
+    styled_table = table_df.style.set_properties(**{'text-align': 'left'})
 
     st.markdown("### 🐦 Species Comparison Table")  
     st.dataframe(comparison_df)
