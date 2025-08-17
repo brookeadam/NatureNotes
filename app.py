@@ -10,23 +10,6 @@ HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
-# === Load Data from APIs ===
-weather_df = fetch_weather_data(29.4689, -98.4794)
-ebird_df = load_all_ebird_data()
-
-# Build merged_df for comparisons
-if not ebird_df.empty:
-    merged_df = ebird_df.rename(columns={
-        "comName": "Species",
-        "sciName": "Scientific Name",   # ✅ added this
-        "howMany": "Count",
-        "obsDt": "Date"
-    })
-    merged_df["Date"] = pd.to_datetime(merged_df["Date"])
-else:
-    merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
-
-
 # === API Fetch: Weather (Open-Meteo) ===
 @st.cache_data
 def fetch_weather_data(lat, lon, start, end):
@@ -57,6 +40,22 @@ def fetch_weather_data(lat, lon, start, end):
             for p in data.get("daily", {}).get("precipitation_sum", [])
         ]
     })
+
+# === Load Data from APIs ===
+weather_df = fetch_weather_data(29.4689, -98.4794, start_date, end_date)
+ebird_df = load_all_ebird_data(start_date, end_date)
+
+# Build merged_df for comparisons
+if not ebird_df.empty:
+    merged_df = ebird_df.rename(columns={
+        "comName": "Species",
+        "sciName": "Scientific Name",   # ✅ added this
+        "howMany": "Count",
+        "obsDt": "Date"
+    })
+    merged_df["Date"] = pd.to_datetime(merged_df["Date"])
+else:
+    merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
