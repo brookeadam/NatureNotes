@@ -174,8 +174,8 @@ if st.button("Compare Species and Weather") and range1_start and range1_end and 
     total_birds_b = range_b_birds["Count"].sum()
 
     st.markdown("### 🔢 Bird Summary")
-    st.write(f"**Range A:** {unique_species_a} unique species, {total_birds_a} total birds")
-    st.write(f"**Range B:** {unique_species_b} unique species, {total_b_b} total birds")
+    st.write(f"**Range A:** {unique_species_a} unique species, {total_a} total birds")
+    st.write(f"**Range B:** {unique_species_b} unique species, {total_b} total birds")
 
     # Species comparison table
     table_a = range_a_birds.groupby("Species")["Count"].sum().reset_index()
