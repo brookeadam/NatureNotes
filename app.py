@@ -7,16 +7,23 @@ import datetime
 # === Constants ===
 EBIRD_API_KEY = "c49o0js5vkjb"
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
+LATITUDE = 29.4689
+LONGITUDE = -98.4798
 
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
-# === API Fetch: Weather (Open-Meteo) ===
+# === HEADER ===
+st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
+st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
+
+# === API Fetch Functions ===
+# Place these at the top for organization
 @st.cache_data
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
-        "latitude": 29.4689,
-        "longitude": -98.4798,
+        "latitude": lat,
+        "longitude": lon,
         "start_date": start.strftime("%Y-%m-%d"),
         "end_date": end.strftime("%Y-%m-%d"),
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
@@ -41,10 +48,9 @@ def fetch_weather_data(lat, lon, start, end):
         ]
     })
 
-# === API Fetch: eBird ===
 @st.cache_data
-def fetch_ebird_data(loc_id, start_date):
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/{start_date.strftime('%Y/%m/%d')}"
+def fetch_ebird_data(loc_id, date):
+    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/{date.strftime('%Y/%m/%d')}"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
@@ -64,254 +70,140 @@ def load_all_ebird_data(start_date, end_date):
         return pd.concat(dfs, ignore_index=True)
     return pd.DataFrame()
 
-# === Load Data from APIs ===
-weather_df = fetch_weather_data(latitude, longitude, start_date, end_date)
-ebird_df = load_all_ebird_data(start_date, end_date)
+# === Date Range Selection (Single, for main display) ===
+st.subheader("🔎 Recent eBird Sightings")
+st.subheader("⏱️ Filter by Date Range")
+quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1, key="main_range")
 
-# Build merged_df for comparisons
+if quick_range == "Last 7 Days":
+    main_start_date = datetime.date.today() - datetime.timedelta(days=7)
+    main_end_date = datetime.date.today()
+elif quick_range == "This Month":
+    today = datetime.date.today()
+    main_start_date = today.replace(day=1)
+    main_end_date = today
+else:
+    main_start_date = st.date_input("Start Date", key="main_start")
+    main_end_date = st.date_input("End Date", key="main_end")
+
+# === Load Data from APIs (After dates are defined) ===
+weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
+ebird_df = load_all_ebird_data(main_start_date, main_end_date)
+
+# === Data Cleaning & Preprocessing ===
 if not ebird_df.empty:
+    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"])
     merged_df = ebird_df.rename(columns={
         "comName": "Species",
-        "sciName": "Scientific Name",   # ✅ added this
+        "sciName": "Scientific Name",
         "howMany": "Count",
         "obsDt": "Date"
     })
-    merged_df["Date"] = pd.to_datetime(merged_df["Date"])
 else:
     merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
-# === HEADER ===
-st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
-st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
-
-# === Recent eBird Sightings ===
-st.subheader("🔎 Recent eBird Sightings")
-st.subheader("⏱️ Filter by Date Range")
-quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
-
-if quick_range == "Last 7 Days":
-    start_date = datetime.date.today() - datetime.timedelta(days=7)
-    end_date = datetime.date.today()
-elif quick_range == "This Month":
-    today = datetime.date.today()
-    start_date = today.replace(day=1)
-    end_date = today
-else:
-    start_date = st.date_input("Start Date")
-    end_date = st.date_input("End Date")
-
+# === Display Recent eBird Sightings ===
 if not ebird_df.empty:
-    ebird_df = ebird_df.sort_values("obsDt", ascending=False).copy()
-
-    # Convert obsDt to datetime and format as YYYY-MM-DD
-    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"]).dt.strftime("%Y-%m-%d")
-
-    table_df = ebird_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
+    ebird_display_df = ebird_df.sort_values("obsDt", ascending=False).copy()
+    ebird_display_df["obsDt"] = pd.to_datetime(ebird_display_df["obsDt"]).dt.strftime("%Y-%m-%d")
+    
+    table_df = ebird_display_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
         "comName": "COMMON NAME",
         "sciName": "SCIENTIFIC NAME",
         "howMany": "OBSERVATION COUNT",
         "obsDt": "OBSERVATION DATE",
     })
-
-    # Force left alignment on all columns
+    
     styled_table = table_df.style.set_properties(**{'text-align': 'left'})
-
     st.dataframe(styled_table, use_container_width=True)
 else:
     st.warning("No recent observations available.")
-
-# === HEADER ===
-st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
-st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
 # === Weather Metrics ===
-weather_filtered = weather_df[
-    (weather_df["Date"] >= pd.to_datetime(start_date)) &
-    (weather_df["Date"] <= pd.to_datetime(end_date))
-]
+st.subheader("🌡️ Weather Metrics")
+weather_filtered = weather_df.copy()
+weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"]) # Ensure Date is datetime
+weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
 
 if not weather_filtered.empty:
-    weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
+    max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
+    max_temp = max_temp_row["temp_max"]
+    max_temp_date = max_temp_row["Date"]
 
-    if not weather_filtered.empty:
-        max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
-        max_temp = max_temp_row["temp_max"]
-        max_temp_date = max_temp_row["Date"]
+    min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
+    min_temp = min_temp_row["temp_min"]
+    min_temp_date = min_temp_row["Date"]
 
-        min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
-        min_temp = min_temp_row["temp_min"]
-        min_temp_date = min_temp_row["Date"]
-
-        st.metric(label="Max Temp (F)", value=f"{max_temp:.1f}", delta=str(max_temp_date.date()))
-        st.metric(label="Min Temp (F)", value=f"{min_temp:.1f}", delta=str(min_temp_date.date()))
-    else:
-        st.warning("No valid temperature data in selected range.")
+    st.metric(label=f"Max Temp (F) on {max_temp_date.date()}", value=f"{max_temp:.1f}")
+    st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
 else:
-    st.warning("No weather data available for the selected date range.")   
-
-# === Recent eBird Sightings ===
-st.subheader("🔎 Recent eBird Sightings")
-st.subheader("⏱️ Filter by Date Range")
-quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
-
-if quick_range == "Last 7 Days":
-    start_date = datetime.date.today() - datetime.timedelta(days=7)
-    end_date = datetime.date.today()
-elif quick_range == "This Month":
-    today = datetime.date.today()
-    start_date = today.replace(day=1)
-    end_date = today
-else:
-    start_date = st.date_input("Start Date")
-    end_date = st.date_input("End Date")
-
-if not ebird_df.empty:
-    ebird_df = ebird_df.sort_values("obsDt", ascending=False).copy()
-
-    # Convert obsDt to datetime and format as YYYY-MM-DD
-    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"]).dt.strftime("%Y-%m-%d")
-
-    table_df = ebird_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
-        "comName": "COMMON NAME",
-        "sciName": "SCIENTIFIC NAME",
-        "howMany": "OBSERVATION COUNT",
-        "obsDt": "OBSERVATION DATE",
-    })
-
-    # Force left alignment on all columns
-    styled_table = table_df.style.set_properties(**{'text-align': 'left'})
-
-    st.dataframe(styled_table, use_container_width=True)
-else:
-    st.warning("No recent observations available.")
+    st.warning("No weather data available for the selected date range.")
 
 # === Species Count Comparison ===
 st.subheader("📊 Species Comparison by Date Range")
 
 col1, col2 = st.columns(2)
 with col1:
-    range1_start = st.date_input("Range 1 Start")
-    range1_end = st.date_input("Range 1 End")
+    range1_start = st.date_input("Range 1 Start", key="range1_start")
+    range1_end = st.date_input("Range 1 End", key="range1_end")
 with col2:
-    range2_start = st.date_input("Range 2 Start")
-    range2_end = st.date_input("Range 2 End")
+    range2_start = st.date_input("Range 2 Start", key="range2_start")
+    range2_end = st.date_input("Range 2 End", key="range2_end")
 
-if st.button("Compare Species and Weather") and range1_start and range1_end and range2_start and range2_end:
-    # Save date ranges to session state
-    st.session_state["range_a"] = (pd.to_datetime(range1_start), pd.to_datetime(range1_end))
-    st.session_state["range_b"] = (pd.to_datetime(range2_start), pd.to_datetime(range2_end))
-
-if "range_a" in st.session_state and "range_b" in st.session_state:
-    range_a = st.session_state["range_a"]
-    range_b = st.session_state["range_b"]
-
-    range_a_df = ebird_df[
-        (ebird_df["obsDt"] >= str(range_a[0])) &
-        (ebird_df["obsDt"] <= str(range_a[1]))
+if st.button("Compare Species and Weather"):
+    # Filter bird data
+    range_a_birds = merged_df[
+        (merged_df["Date"] >= pd.to_datetime(range1_start)) &
+        (merged_df["Date"] <= pd.to_datetime(range1_end))
     ]
-    range_b_df = ebird_df[
-        (ebird_df["obsDt"] >= str(range_b[0])) &
-        (ebird_df["obsDt"] <= str(range_b[1]))
+    range_b_birds = merged_df[
+        (merged_df["Date"] >= pd.to_datetime(range2_start)) &
+        (merged_df["Date"] <= pd.to_datetime(range2_end))
     ]
 
-    # Filter bird data  
-    range_a_birds = merged_df[(merged_df["Date"] >= range_a[0]) & (merged_df["Date"] <= range_a[1])]
-    range_b_birds = merged_df[(merged_df["Date"] >= range_b[0]) & (merged_df["Date"] <= range_b[1])]
-
-    # Summary stats  
+    # Summary stats
     unique_species_a = range_a_birds["Species"].nunique()
     unique_species_b = range_b_birds["Species"].nunique()
     total_birds_a = range_a_birds["Count"].sum()
     total_birds_b = range_b_birds["Count"].sum()
 
-    st.markdown("### 🔢 Bird Summary")  
-    st.write(f"**Range A:** {unique_species_a} unique species, {total_birds_a} total birds")  
-    st.write(f"**Range B:** {unique_species_b} unique species, {total_birds_b} total birds")  
+    st.markdown("### 🔢 Bird Summary")
+    st.write(f"**Range A ({range1_start}–{range1_end}):** {unique_species_a} unique species, {total_birds_a} total birds")
+    st.write(f"**Range B ({range2_start}–{range2_end}):** {unique_species_b} unique species, {total_birds_b} total birds")
+    
+    # Species comparison table
+    table_a = range_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
+    table_b = range_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
 
-    # Species comparison table  
-    table_a = range_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()  
-    table_b = range_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()  
+    col_a = f"Birds ({range1_start}–{range1_end})"
+    col_b = f"Birds ({range2_start}–{range2_end})"
+    comparison_df = pd.merge(table_a.rename(columns={"Count": col_a}), 
+                             table_b.rename(columns={"Count": col_b}), 
+                             on=["Species", "Scientific Name"], how="outer").fillna(0)
+    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
 
-    col_a = f"Birds {range1_start}–{range1_end}"  
-    col_b = f"Birds {range2_start}–{range2_end}"  
-    table_a.rename(columns={"Count": col_a}, inplace=True)  
-    table_b.rename(columns={"Count": col_b}, inplace=True)  
+    st.markdown("### 🐦 Species Comparison Table")
+    st.dataframe(comparison_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
 
-    comparison_df = pd.merge(table_a, table_b, on=["Species", "Scientific Name"], how="outer").fillna(0)  
-    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]  
-
-     # Force left alignment on all columns
-    styled_table = table_df.style.set_properties(**{'text-align': 'left'})
-
-    st.markdown("### 🐦 Species Comparison Table")  
-    st.dataframe(comparison_df)
-else:
-    st.info("Select two date ranges above to compare species.")
-
-# === Altair Weather Trends (Detailed) ===
-st.subheader("🌡️ Weather Data by Date Range")
-
-if "range_a" in st.session_state and "range_b" in st.session_state:
-    range_a = st.session_state["range_a"]
-    range_b = st.session_state["range_b"]
-
-    weather_range_a = weather_df[
-        (weather_df["Date"] >= pd.to_datetime(range_a[0])) &
-        (weather_df["Date"] <= pd.to_datetime(range_a[1]))
-    ]
-    weather_range_b = weather_df[
-        (weather_df["Date"] >= pd.to_datetime(range_b[0])) &
-        (weather_df["Date"] <= pd.to_datetime(range_b[1]))
-    ]
+    # Weather comparison
+    st.markdown("### 🌡️ Weather Trends (Detailed)")
+    weather_range_a = weather_df[(weather_df["Date"] >= pd.to_datetime(range1_start)) & (weather_df["Date"] <= pd.to_datetime(range1_end))]
+    weather_range_b = weather_df[(weather_df["Date"] >= pd.to_datetime(range2_start)) & (weather_df["Date"] <= pd.to_datetime(range2_end))]
 
     if not weather_range_a.empty:
-        st.write("### Range A Weather Data")
-        renamed_a = weather_range_a.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(renamed_a, use_container_width=True)
-
+        st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
         max_temp_a = weather_range_a["temp_max"].max()
         min_temp_a = weather_range_a["temp_min"].min()
         precip_a = weather_range_a["precipitation"].sum()
-
-        st.markdown(
-            f"<div style='text-align:left;'>"
-            f"<b>Summary (Range A):</b> Max Temp: {max_temp_a}°F, "
-            f"Min Temp: {min_temp_a}°F, "
-            f"Precipitation: {precip_a:.2f} in"
-            f"</div>",
-            unsafe_allow_html=True
-        )
-
-        # Convert obsDt to datetime and format as YYYY-MM-DD
-    weather_df["Date"] = pd.to_datetime(weather_df["Date"]).dt.strftime("%Y-%m-%d")
+        st.info(f"Max Temp: {max_temp_a}°F, Min Temp: {min_temp_a}°F, Total Precip: {precip_a:.2f} in")
 
     if not weather_range_b.empty:
-        st.write("### Range B Weather Data")
-        renamed_b = weather_range_b.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(renamed_b, use_container_width=True)
-
+        st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end})**")
         max_temp_b = weather_range_b["temp_max"].max()
         min_temp_b = weather_range_b["temp_min"].min()
         precip_b = weather_range_b["precipitation"].sum()
-
-        st.markdown(
-            f"<div style='text-align:left;'>"
-            f"<b>Summary (Range B):</b> Max Temp: {max_temp_b}°F, "
-            f"Min Temp: {min_temp_b}°F, "
-            f"Precipitation: {precip_b:.2f} in"
-            f"</div>",
-            unsafe_allow_html=True
-        )
-else:
-    st.info("Select two date ranges above to compare detailed weather data.")
+        st.info(f"Max Temp: {max_temp_b}°F, Min Temp: {min_temp_b}°F, Total Precip: {precip_b:.2f} in")
+        
 # === Footer ===
 st.markdown("---")
 st.markdown(
@@ -319,4 +211,5 @@ st.markdown(
     "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
     "</div>",
     unsafe_allow_html=True
-)
+    )
+    
