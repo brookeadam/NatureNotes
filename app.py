@@ -4,6 +4,7 @@ import requests
 import altair as alt
 import datetime
 from pathlib import Path
+from dateutil.relativedelta import relativedelta
 
 # === Constants ===
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
@@ -26,26 +27,29 @@ def fetch_weather_data(lat, lon, start, end):
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
         "timezone": "America/Chicago"
     }
-    response = requests.get(url, params=params)
-    data = response.json()
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        return pd.DataFrame({
+            "Date": pd.to_datetime(data.get("daily", {}).get("time", [])),
+            "temp_max": [
+                (t * 9/5 + 32) if t is not None else None
+                for t in data.get("daily", {}).get("temperature_2m_max", [])
+            ],
+            "temp_min": [
+                (t * 9/5 + 32) if t is not None else None
+                for t in data.get("daily", {}).get("temperature_2m_min", [])
+            ],
+            "precipitation": [
+                (p * 0.0393701) if p is not None else None
+                for p in data.get("daily", {}).get("precipitation_sum", [])
+            ]
+        })
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching weather data: {e}")
+        return pd.DataFrame()
 
-    return pd.DataFrame({
-        "Date": pd.to_datetime(data.get("daily", {}).get("time", [])),
-        "temp_max": [
-            (t * 9/5 + 32) if t is not None else None
-            for t in data.get("daily", {}).get("temperature_2m_max", [])
-        ],
-        "temp_min": [
-            (t * 9/5 + 32) if t is not None else None
-            for t in data.get("daily", {}).get("temperature_2m_min", [])
-        ],
-        "precipitation": [
-            (p * 0.0393701) if p is not None else None
-            for p in data.get("daily", {}).get("precipitation_sum", [])
-        ]
-    })
-
-# === Load Data from File (For eBird data) ===
 @st.cache_data
 def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
@@ -54,16 +58,9 @@ def load_ebird_data_from_file():
         st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
         return pd.DataFrame()
 
-# The main app logic will call these functions after the date ranges are defined.
-# This code block is just for the function definitions.
-# The `app.py` file should now call `load_ebird_data_from_file()` instead of the old functions.
-
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
-
-# === Date Range Selection (Single, for main display) ===
-# ... (rest of the code above) ...
 
 # === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings")
@@ -81,9 +78,8 @@ else:
     main_start_date = st.date_input("Start Date", key="main_start")
     main_end_date = st.date_input("End Date", key="main_end")
 
-# === Load Data from APIs (After dates are defined) ===
+# === Load Data from File ===
 weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
-# THIS IS THE CORRECTED LINE:
 ebird_df = load_ebird_data_from_file()
 
 # === Data Cleaning & Preprocessing ===
@@ -100,20 +96,27 @@ else:
 
 # === Display Recent eBird Sightings ===
 if not ebird_df.empty:
-    ebird_display_df = ebird_df.sort_values("obsDt", ascending=False).copy()
-    ebird_display_df["obsDt"] = pd.to_datetime(ebird_display_df["obsDt"]).dt.strftime("%Y-%m-%d")
+    # Filter ebird_df for the date range selected by the user
+    filtered_ebird_df = ebird_df[(ebird_df["obsDt"] >= pd.to_datetime(main_start_date)) & 
+                                 (ebird_df["obsDt"] <= pd.to_datetime(main_end_date))]
     
-    table_df = ebird_display_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
-        "comName": "COMMON NAME",
-        "sciName": "SCIENTIFIC NAME",
-        "howMany": "OBSERVATION COUNT",
-        "obsDt": "OBSERVATION DATE",
-    })
-    
-    styled_table = table_df.style.set_properties(**{'text-align': 'left'})
-    st.dataframe(styled_table, use_container_width=True)
+    if not filtered_ebird_df.empty:
+        filtered_ebird_df = filtered_ebird_df.sort_values("obsDt", ascending=False).copy()
+        filtered_ebird_df["obsDt"] = filtered_ebird_df["obsDt"].dt.strftime("%Y-%m-%d")
+        
+        table_df = filtered_ebird_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
+            "comName": "COMMON NAME",
+            "sciName": "SCIENTIFIC NAME",
+            "howMany": "OBSERVATION COUNT",
+            "obsDt": "OBSERVATION DATE",
+        })
+        
+        styled_table = table_df.style.set_properties(**{'text-align': 'left'})
+        st.dataframe(styled_table, use_container_width=True)
+    else:
+        st.warning("No recent observations available for the selected date range.")
 else:
-    st.warning("No recent observations available.")
+    st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
 
 # === Weather Metrics ===
 st.subheader("🌡️ Weather Metrics")
