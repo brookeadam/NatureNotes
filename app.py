@@ -3,16 +3,18 @@ import pandas as pd
 import requests
 import altair as alt
 import datetime
+from pathlib import Path
 
 # === Constants ===
-EBIRD_API_KEY = "c49o0js5vkjb"
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 LATITUDE = 29.4689
 LONGITUDE = -98.4798
+DATA_DIR = Path("data")
+EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
-# === API Fetch Functions ===
+# === API Fetch Functions (Only for live weather data) ===
 @st.cache_data
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
@@ -43,27 +45,18 @@ def fetch_weather_data(lat, lon, start, end):
         ]
     })
 
+# === Load Data from File (For eBird data) ===
 @st.cache_data
-def fetch_ebird_data(loc_id, date):
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/{date.strftime('%Y/%m/%d')}"
-    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return pd.DataFrame(response.json())
-    return pd.DataFrame()
+def load_ebird_data_from_file():
+    if EBIRD_DATA_FILE.exists():
+        return pd.read_parquet(EBIRD_DATA_FILE)
+    else:
+        st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
+        return pd.DataFrame()
 
-@st.cache_data
-def load_all_ebird_data(start_date, end_date):
-    dfs = []
-    date_range = pd.date_range(start_date, end_date)
-    for loc in HEADWATERS_LOCATIONS:
-        for date in date_range:
-            df = fetch_ebird_data(loc, date)
-            if not df.empty:
-                dfs.append(df)
-    if dfs:
-        return pd.concat(dfs, ignore_index=True)
-    return pd.DataFrame()
+# The main app logic will call these functions after the date ranges are defined.
+# This code block is just for the function definitions.
+# The `app.py` file should now call `load_ebird_data_from_file()` instead of the old functions.
 
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
