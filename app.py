@@ -145,90 +145,96 @@ if not ebird_df.empty:
 else:
     st.warning("No recent observations available.")
 
-# === Species Count Comparison ===
-st.markdown("## 📊 Species and Weather Comparison by Date Range")
+# === Species Count Comparison ==
+st.subheader("📊 Species Comparison by Date Range")
 
 col1, col2 = st.columns(2)
 with col1:
-    range1_start = st.date_input("Range 1 Start")
-    range1_end = st.date_input("Range 1 End")
+    range_a = st.date_input("Select Range A", [])
 with col2:
-    range2_start = st.date_input("Range 2 Start")
-    range2_end = st.date_input("Range 2 End")
+    range_b = st.date_input("Select Range B", [])
 
-if st.button("Compare Species and Weather") and range1_start and range1_end and range2_start and range2_end:
-    # Save date ranges to session state
-    st.session_state["range_a"] = (pd.to_datetime(range1_start), pd.to_datetime(range1_end))
-    st.session_state["range_b"] = (pd.to_datetime(range2_start), pd.to_datetime(range2_end))
+if len(range_a) == 2 and len(range_b) == 2:
+    range_a_df = ebird_df[
+        (ebird_df["obsDt"] >= str(range_a[0])) &
+        (ebird_df["obsDt"] <= str(range_a[1]))
+    ]
+    range_b_df = ebird_df[
+        (ebird_df["obsDt"] >= str(range_b[0])) &
+        (ebird_df["obsDt"] <= str(range_b[1]))
+    ]
 
-    # Filter bird data
-    range_a_birds = merged_df[(merged_df["Date"] >= st.session_state["range_a"][0]) &
-                              (merged_df["Date"] <= st.session_state["range_a"][1])]
-    range_b_birds = merged_df[(merged_df["Date"] >= st.session_state["range_b"][0]) &
-                              (merged_df["Date"] <= st.session_state["range_b"][1])]
+    unique_species_a = range_a_df["comName"].nunique()
+    unique_species_b = range_b_df["comName"].nunique()
 
-    # Summary stats
-    unique_species_a = range_a_birds["Species"].nunique()
-    unique_species_b = range_b_birds["Species"].nunique()
-    total_birds_a = range_a_birds["Count"].sum()
-    total_birds_b = range_b_birds["Count"].sum()
+    total_a = range_a_df["howMany"].sum()
+    total_b = range_b_df["howMany"].sum()
 
-    st.markdown("### 🔢 Bird Summary")
-    st.write(f"**Range A:** {unique_species_a} unique species, {total_a} total birds")
-    st.write(f"**Range B:** {unique_species_b} unique species, {total_b} total birds")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Range A Unique Species", unique_species_a)
+        st.metric("Range A Total Birds", total_a)
+    with col2:
+        st.metric("Range B Unique Species", unique_species_b)
+        st.metric("Range B Total Birds", total_b)
 
-    # Species comparison table
-    table_a = range_a_birds.groupby("Species")["Count"].sum().reset_index()
-    table_b = range_b_birds.groupby("Species")["Count"].sum().reset_index()
-
-    col_a = f"Birds {range1_start}–{range1_end}"
-    col_b = f"Birds {range2_start}–{range2_end}"
-    table_a.rename(columns={"Count": col_a}, inplace=True)
-    table_b.rename(columns={"Count": col_b}, inplace=True)
-
-    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer").fillna(0)
-    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
-
-    st.markdown("### 🐦 Species Comparison Table")
-    st.dataframe(comparison_df)
-
+    # 🔹 Combined summary line (left-aligned)
+    st.markdown(
+        f"<div style='text-align:left;'>"
+        f"<b>Range A:</b> {unique_species_a} unique species, {total_a} total birds &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"<b>Range B:</b> {unique_species_b} unique species, {total_b} total birds"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+else:
+    st.info("Select two date ranges above to compare species.")
+    
 # === Altair Weather Trends (Detailed) ===
-st.subheader("🌦️ Weather Trends (Detailed)")
+st.subheader("🌡️ Weather Data by Date Range")
 
-# Make sure range_a and range_b exist before trying to use them
-if "range_a" in locals() and "range_b" in locals() and range_a and range_b:
-    # Filter weather data for each date range
+if len(range_a) == 2 and len(range_b) == 2:
     weather_range_a = weather_df[
-        (weather_df["date"] >= range_a[0]) & (weather_df["date"] <= range_a[1])
+        (weather_df["date"] >= pd.to_datetime(range_a[0])) &
+        (weather_df["date"] <= pd.to_datetime(range_a[1]))
     ]
     weather_range_b = weather_df[
-        (weather_df["date"] >= range_b[0]) & (weather_df["date"] <= range_b[1])
+        (weather_df["date"] >= pd.to_datetime(range_b[0])) &
+        (weather_df["date"] <= pd.to_datetime(range_b[1]))
     ]
 
     if not weather_range_a.empty:
-        st.markdown("**Range A Weather Data**")
-        st.dataframe(weather_range_a.reset_index(drop=True), use_container_width=True)
+        st.write("### Range A Weather Data")
+        st.dataframe(weather_range_a, use_container_width=True)
 
-        # Summary line for Range A
-        summary_a = {
-            "Max Temp (°F)": weather_range_a["tmax"].max(),
-            "Min Temp (°F)": weather_range_a["tmin"].min(),
-            "Precipitation (in)": weather_range_a["prcp"].sum(),
-        }
-        st.write("**Summary (Range A):**", summary_a)
+        max_temp_a = weather_range_a["max_temp_f"].max()
+        min_temp_a = weather_range_a["min_temp_f"].min()
+        precip_a = weather_range_a["precip_in"].sum()
+
+        st.markdown(
+            f"<div style='text-align:left;'>"
+            f"<b>Summary (Range A):</b> Max Temp: {max_temp_a}°F, "
+            f"Min Temp: {min_temp_a}°F, "
+            f"Precipitation: {precip_a:.2f} in"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
     if not weather_range_b.empty:
-        st.markdown("**Range B Weather Data**")
-        st.dataframe(weather_range_b.reset_index(drop=True), use_container_width=True)
+        st.write("### Range B Weather Data")
+        st.dataframe(weather_range_b, use_container_width=True)
 
-        # Summary line for Range B
-        summary_b = {
-            "Max Temp (°F)": weather_range_b["tmax"].max(),
-            "Min Temp (°F)": weather_range_b["tmin"].min(),
-            "Precipitation (in)": weather_range_b["prcp"].sum(),
-        }
-        st.write("**Summary (Range B):**", summary_b)
+        max_temp_b = weather_range_b["max_temp_f"].max()
+        min_temp_b = weather_range_b["min_temp_f"].min()
+        precip_b = weather_range_b["precip_in"].sum()
 
+        st.markdown(
+            f"<div style='text-align:left;'>"
+            f"<b>Summary (Range B):</b> Max Temp: {max_temp_b}°F, "
+            f"Min Temp: {min_temp_b}°F, "
+            f"Precipitation: {precip_b:.2f} in"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 else:
     st.info("Select two date ranges above to compare detailed weather data.")
 # === Footer ===
