@@ -15,8 +15,8 @@ st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
-        "latitude": lat.29.4689,
-        "longitude": lon.-98.4798,
+        "latitude": 29.4689,
+        "longitude": -98.4798,
         "start_date": start.strftime("%Y-%m-%d"),
         "end_date": end.strftime("%Y-%m-%d"),
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
