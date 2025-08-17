@@ -41,6 +41,46 @@ def fetch_weather_data(lat, lon, start, end):
         ]
     })
 
+# === HEADER ===
+st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
+st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
+
+# === Recent eBird Sightings ===
+st.subheader("🔎 Recent eBird Sightings")
+st.subheader("⏱️ Filter by Date Range")
+quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
+
+if quick_range == "Last 7 Days":
+    start_date = datetime.date.today() - datetime.timedelta(days=7)
+    end_date = datetime.date.today()
+elif quick_range == "This Month":
+    today = datetime.date.today()
+    start_date = today.replace(day=1)
+    end_date = today
+else:
+    start_date = st.date_input("Start Date")
+    end_date = st.date_input("End Date")
+
+if not ebird_df.empty:
+    ebird_df = ebird_df.sort_values("obsDt", ascending=False).copy()
+
+    # Convert obsDt to datetime and format as YYYY-MM-DD
+    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"]).dt.strftime("%Y-%m-%d")
+
+    table_df = ebird_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
+        "comName": "COMMON NAME",
+        "sciName": "SCIENTIFIC NAME",
+        "howMany": "OBSERVATION COUNT",
+        "obsDt": "OBSERVATION DATE",
+    })
+
+    # Force left alignment on all columns
+    styled_table = table_df.style.set_properties(**{'text-align': 'left'})
+
+    st.dataframe(styled_table, use_container_width=True)
+else:
+    st.warning("No recent observations available.")
+    
 # === API Fetch: eBird ===
 @st.cache_data
 def fetch_ebird_data(loc_id, start_date):
