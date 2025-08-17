@@ -42,7 +42,7 @@ def fetch_weather_data(lat, lon, start, end):
     })
 
 # === Load Data from APIs ===
-weather_df = fetch_weather_data(29.4689, -98.4794(start_date, end_date))
+weather_df = fetch_weather_data(29.4689, -98.4794, start_date, end_date)
 ebird_df = load_all_ebird_data(start_date, end_date)
 
 # Build merged_df for comparisons
