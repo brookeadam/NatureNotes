@@ -137,8 +137,8 @@ elif quick_range == "This Month":
     start_date = today.replace(day=1)
     end_date = today
 else:
-    start_date = st.sidebar.date_input("Start Date", datetime.date(2025, 1, 1))
-    end_date = st.sidebar.date_input("End Date", datetime.date.today())
+    start_date = st.date_input("Start Date")
+    end_date = st.date_input("End Date")
 
 if not ebird_df.empty:
     ebird_df = ebird_df.sort_values("obsDt", ascending=False).copy()
@@ -260,6 +260,9 @@ if "range_a" in st.session_state and "range_b" in st.session_state:
             f"</div>",
             unsafe_allow_html=True
         )
+
+        # Convert obsDt to datetime and format as YYYY-MM-DD
+    weather_df["Date"] = pd.to_datetime(weather_df["Date"]).dt.strftime("%Y-%m-%d")
 
     if not weather_range_b.empty:
         st.write("### Range B Weather Data")
