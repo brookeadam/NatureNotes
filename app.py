@@ -64,21 +64,6 @@ def load_all_ebird_data(start_date, end_date):
         return pd.concat(dfs, ignore_index=True)
     return pd.DataFrame()
 
-# === Sidebar Filters ===
-st.sidebar.header("⏱️ Filter by Date Range")
-quick_range = st.sidebar.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
-
-if quick_range == "Last 7 Days":
-    start_date = datetime.date.today() - datetime.timedelta(days=7)
-    end_date = datetime.date.today()
-elif quick_range == "This Month":
-    today = datetime.date.today()
-    start_date = today.replace(day=1)
-    end_date = today
-else:
-    start_date = st.sidebar.date_input("Start Date", datetime.date(2025, 1, 1))
-    end_date = st.sidebar.date_input("End Date", datetime.date.today())
-
 # === Load Data from APIs ===
 weather_df = fetch_weather_data(29.4689, -98.4794, start_date, end_date)
 ebird_df = load_all_ebird_data(start_date, end_date)
