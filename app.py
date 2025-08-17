@@ -127,7 +127,7 @@ else:
 # === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
 st.subheader("⏱️ Filter by Date Range")
-quick_range = st.sidebar.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
+quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1)
 
 if quick_range == "Last 7 Days":
     start_date = datetime.date.today() - datetime.timedelta(days=7)
