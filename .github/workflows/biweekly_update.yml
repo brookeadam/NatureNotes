@@ -1,6 +1,6 @@
 name: Biweekly eBird Data Update
 
-    on:
+on:
   schedule:
     - cron: '0 0 * * 0' # Runs at 00:00 on Sunday
   workflow_dispatch:
