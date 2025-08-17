@@ -122,76 +122,6 @@ if not weather_filtered.empty:
         st.warning("No valid temperature data in selected range.")
 else:
     st.warning("No weather data available for the selected date range.")   
-    
-# === Species Count Comparison ===
-st.markdown("## 📊 Species and Weather Comparison by Date Range")
-
-col1, col2 = st.columns(2)
-with col1:
-    range1_start = st.date_input("Range 1 Start")
-    range1_end = st.date_input("Range 1 End")
-with col2:
-    range2_start = st.date_input("Range 2 Start")
-    range2_end = st.date_input("Range 2 End")
-
-if st.button("Compare Species and Weather"):
-    
-    # Filter data
-    range_a = merged_df[(merged_df["Date"] >= pd.to_datetime(start_a)) & (merged_df["Date"] <= pd.to_datetime(end_a))]
-    range_b = merged_df[(merged_df["Date"] >= pd.to_datetime(start_b)) & (merged_df["Date"] <= pd.to_datetime(end_b))]
-
-    # Unique species counts
-    unique_species_a = range_a["Species"].nunique()
-    unique_species_b = range_b["Species"].nunique()
-
-    # Total bird counts
-    total_birds_a = range_a["Count"].sum()
-    total_birds_b = range_b["Count"].sum()
-
-    # Bird count per species
-    table_a = range_a.groupby("Species")["Count"].sum().reset_index()
-    table_b = range_b.groupby("Species")["Count"].sum().reset_index()
-
-    # Rename columns based on selected date ranges
-    col_a = f"Birds {start_a.strftime('%b %Y')}–{end_a.strftime('%b %Y')}"
-    col_b = f"Birds {start_b.strftime('%b %Y')}–{end_b.strftime('%b %Y')}"
-    table_a.rename(columns={"Count": col_a}, inplace=True)
-    table_b.rename(columns={"Count": col_b}, inplace=True)
-
-    # Merge
-    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer").fillna(0)
-
-    # Calculate difference
-    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
-
-    # Sort: increases on top, decreases on bottom
-    comparison_df = comparison_df.sort_values("Difference", ascending=False)
-
-    # Color coding
-    def highlight_diff(val):
-        if val > 0:
-            return "background-color: lightgreen"
-        elif val < 0:
-            return "background-color: lightcoral"
-        else:
-            return "background-color: white"
-
-    # Display summary
-    st.markdown("### 🔢 Summary")
-    st.write(f"**Range A:** {unique_species_a} unique species, {total_birds_a} total birds")
-    st.write(f"**Range B:** {unique_species_b} unique species, {total_birds_b} total birds")
-
-    # Display comparison table
-    st.markdown("### 🐦 Species Comparison Table")
-    st.dataframe(comparison_df.style.applymap(highlight_diff, subset=["Difference"]))
-
-# Save to session_state so other sections can use them
-if range_a and len(range_a) == 2:
-    st.session_state["range_a"] = range_a
-
-if range_b and len(range_b) == 2:
-    st.session_state["range_b"] = range_b
-
 
 # === Recent eBird Sightings ===
 st.subheader("🔎 Recent eBird Sightings")
@@ -215,55 +145,88 @@ if not ebird_df.empty:
 else:
     st.warning("No recent observations available.")
 
+# === Species Count Comparison ===
+st.markdown("## 📊 Species and Weather Comparison by Date Range")
+
+col1, col2 = st.columns(2)
+with col1:
+    range1_start = st.date_input("Range 1 Start")
+    range1_end = st.date_input("Range 1 End")
+with col2:
+    range2_start = st.date_input("Range 2 Start")
+    range2_end = st.date_input("Range 2 End")
+
+if st.button("Compare Species and Weather") and range1_start and range1_end and range2_start and range2_end:
+    # Save date ranges to session state
+    st.session_state["range_a"] = (pd.to_datetime(range1_start), pd.to_datetime(range1_end))
+    st.session_state["range_b"] = (pd.to_datetime(range2_start), pd.to_datetime(range2_end))
+
+    # Filter bird data
+    range_a_birds = merged_df[(merged_df["Date"] >= st.session_state["range_a"][0]) &
+                              (merged_df["Date"] <= st.session_state["range_a"][1])]
+    range_b_birds = merged_df[(merged_df["Date"] >= st.session_state["range_b"][0]) &
+                              (merged_df["Date"] <= st.session_state["range_b"][1])]
+
+    # Summary stats
+    unique_species_a = range_a_birds["Species"].nunique()
+    unique_species_b = range_b_birds["Species"].nunique()
+    total_birds_a = range_a_birds["Count"].sum()
+    total_birds_b = range_b_birds["Count"].sum()
+
+    st.markdown("### 🔢 Bird Summary")
+    st.write(f"**Range A:** {unique_species_a} unique species, {total_birds_a} total birds")
+    st.write(f"**Range B:** {unique_species_b} unique species, {total_b_b} total birds")
+
+    # Species comparison table
+    table_a = range_a_birds.groupby("Species")["Count"].sum().reset_index()
+    table_b = range_b_birds.groupby("Species")["Count"].sum().reset_index()
+
+    col_a = f"Birds {range1_start}–{range1_end}"
+    col_b = f"Birds {range2_start}–{range2_end}"
+    table_a.rename(columns={"Count": col_a}, inplace=True)
+    table_b.rename(columns={"Count": col_b}, inplace=True)
+
+    comparison_df = pd.merge(table_a, table_b, on="Species", how="outer").fillna(0)
+    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
+
+    st.markdown("### 🐦 Species Comparison Table")
+    st.dataframe(comparison_df)
+
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌦️ Weather Trends (Detailed)")
 
-if "range_a" in st.session_state and "range_b" in st.session_state:
-    range_a = st.session_state["range_a"]
-    range_b = st.session_state["range_b"]
+if range_a and range_b:
+    # Filter weather data for each date range
+    weather_range_a = weather_df[
+        (weather_df["date"] >= range_a[0]) & (weather_df["date"] <= range_a[1])
+    ]
+    weather_range_b = weather_df[
+        (weather_df["date"] >= range_b[0]) & (weather_df["date"] <= range_b[1])
+    ]
 
-    # Filter merged_df by date range for A and B
-    weather_a = merged_df[
-        (merged_df["date"] >= range_a[0]) & (merged_df["date"] <= range_a[1])
-    ].copy()
-
-    weather_b = merged_df[
-        (merged_df["date"] >= range_b[0]) & (merged_df["date"] <= range_b[1])
-    ].copy()
-
-    def format_weather(df):
-        # Rename columns
-        df = df.reset_index(drop=True).rename(columns={
-            "date": "DATE",
-            "temp": "TEMPERATURE (°F)",
-            "precip": "PRECIPITATION (in)",
-            "wind": "WIND SPEED (mph)"
-        })
-
-        if not df.empty:
-            summary = {
-                "DATE": "Summary",
-                "TEMPERATURE (°F)": f"Max: {df['TEMPERATURE (°F)'].max()} | Min: {df['TEMPERATURE (°F)'].min()}",
-                "PRECIPITATION (in)": round(df["PRECIPITATION (in)"].sum(), 2),
-                "WIND SPEED (mph)": "-"
-            }
-            df = pd.concat([df, pd.DataFrame([summary])], ignore_index=True)
-
-        return df
-
-    weather_a = format_weather(weather_a)
-    weather_b = format_weather(weather_b)
-
-    # Show side-by-side tables
-    col1, col2 = st.columns(2)
-
-    with col1:
+    if not weather_range_a.empty:
         st.markdown("**Range A Weather Data**")
-        st.dataframe(weather_a, use_container_width=True)
+        st.dataframe(weather_range_a.reset_index(drop=True), use_container_width=True)
 
-    with col2:
+        # Summary line for Range A
+        summary_a = {
+            "Max Temp (°F)": weather_range_a["tmax"].max(),
+            "Min Temp (°F)": weather_range_a["tmin"].min(),
+            "Precipitation (in)": weather_range_a["prcp"].sum(),
+        }
+        st.write("**Summary (Range A):**", summary_a)
+
+    if not weather_range_b.empty:
         st.markdown("**Range B Weather Data**")
-        st.dataframe(weather_b, use_container_width=True)
+        st.dataframe(weather_range_b.reset_index(drop=True), use_container_width=True)
+
+        # Summary line for Range B
+        summary_b = {
+            "Max Temp (°F)": weather_range_b["tmax"].max(),
+            "Min Temp (°F)": weather_range_b["tmin"].min(),
+            "Precipitation (in)": weather_range_b["prcp"].sum(),
+        }
+        st.write("**Summary (Range B):**", summary_b)
 
 else:
     st.info("Select two date ranges above to compare detailed weather data.")
