@@ -41,6 +41,29 @@ def fetch_weather_data(lat, lon, start, end):
         ]
     })
 
+# === API Fetch: eBird ===
+@st.cache_data
+def fetch_ebird_data(loc_id, start_date):
+    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/{start_date.strftime('%Y/%m/%d')}"
+    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return pd.DataFrame(response.json())
+    return pd.DataFrame()
+
+@st.cache_data
+def load_all_ebird_data(start_date, end_date):
+    dfs = []
+    date_range = pd.date_range(start_date, end_date)
+    for loc in HEADWATERS_LOCATIONS:
+        for date in date_range:
+            df = fetch_ebird_data(loc, date)
+            if not df.empty:
+                dfs.append(df)
+    if dfs:
+        return pd.concat(dfs, ignore_index=True)
+    return pd.DataFrame()
+
 # === Load Data from APIs ===
 weather_df = fetch_weather_data(latitude, longitude, start_date, end_date)
 ebird_df = load_all_ebird_data(start_date, end_date)
@@ -96,30 +119,6 @@ if not ebird_df.empty:
     st.dataframe(styled_table, use_container_width=True)
 else:
     st.warning("No recent observations available.")
-    
-# === API Fetch: eBird ===
-@st.cache_data
-def fetch_ebird_data(loc_id, start_date):
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/{start_date.strftime('%Y/%m/%d')}"
-    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return pd.DataFrame(response.json())
-    return pd.DataFrame()
-
-@st.cache_data
-def load_all_ebird_data(start_date, end_date):
-    dfs = []
-    date_range = pd.date_range(start_date, end_date)
-    for loc in HEADWATERS_LOCATIONS:
-        for date in date_range:
-            df = fetch_ebird_data(loc, date)
-            if not df.empty:
-                dfs.append(df)
-    if dfs:
-        return pd.concat(dfs, ignore_index=True)
-    return pd.DataFrame()
-
 
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
