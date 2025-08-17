@@ -63,6 +63,9 @@ st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
 st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
 # === Date Range Selection (Single, for main display) ===
+# ... (rest of the code above) ...
+
+# === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings")
 st.subheader("⏱️ Filter by Date Range")
 quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1, key="main_range")
@@ -77,6 +80,15 @@ elif quick_range == "This Month":
 else:
     main_start_date = st.date_input("Start Date", key="main_start")
     main_end_date = st.date_input("End Date", key="main_end")
+
+# === Load Data from APIs (After dates are defined) ===
+weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
+
+# === CORRECTED LINE ===
+# Instead of calling load_all_ebird_data(), call the new function.
+ebird_df = load_ebird_data_from_file()
+
+# ... (rest of the code below) ...
 
 # === Load Data from APIs (After dates are defined) ===
 weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
