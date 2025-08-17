@@ -15,8 +15,8 @@ st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
-        "latitude": lat,
-        "longitude": lon,
+        "29.4689": lat,
+        "-98.4794": lon,
         "start_date": start.strftime("%Y-%m-%d"),
         "end_date": end.strftime("%Y-%m-%d"),
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
@@ -42,7 +42,7 @@ def fetch_weather_data(lat, lon, start, end):
     })
 
 # === Load Data from APIs ===
-weather_df = fetch_weather_data(29.4689, -98.4794, start_date, end_date)
+weather_df = fetch_weather_data(29.4689,-98.4794, start_date, end_date)
 ebird_df = load_all_ebird_data(start_date, end_date)
 
 # Build merged_df for comparisons
