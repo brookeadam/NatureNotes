@@ -208,57 +208,66 @@ else:
 
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌡️ Weather Data by Date Range")
+st.subheader("🌡️ Weather Data by Date Range")
 
 if "range_a" in st.session_state and "range_b" in st.session_state:
-range_a = st.session_state["range_a"]
-range_b = st.session_state["range_b"]
+    range_a = st.session_state["range_a"]
+    range_b = st.session_state["range_b"]
 
-weather_range_a = weather_df[  
-    (weather_df["Date"] >= pd.to_datetime(range_a[0])) &  
-    (weather_df["Date"] <= pd.to_datetime(range_a[1]))  
-]  
-weather_range_b = weather_df[  
-    (weather_df["Date"] >= pd.to_datetime(range_b[0])) &  
-    (weather_df["Date"] <= pd.to_datetime(range_b[1]))  
-]  
+    weather_range_a = weather_df[
+        (weather_df["Date"] >= pd.to_datetime(range_a[0])) &
+        (weather_df["Date"] <= pd.to_datetime(range_a[1]))
+    ]
+    weather_range_b = weather_df[
+        (weather_df["Date"] >= pd.to_datetime(range_b[0])) &
+        (weather_df["Date"] <= pd.to_datetime(range_b[1]))
+    ]
 
-if not weather_range_a.empty:  
-    st.write("### Range A Weather Data")  
-    st.dataframe(weather_range_a, use_container_width=True)  
+    if not weather_range_a.empty:
+        st.write("### Range A Weather Data")
+        renamed_a = weather_range_a.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_a, use_container_width=True)
 
-    max_temp_a = weather_range_a["temp_max"].max()  
-    min_temp_a = weather_range_a["temp_min"].min()  
-    precip_a = weather_range_a["precipitation"].sum()  
+        max_temp_a = weather_range_a["temp_max"].max()
+        min_temp_a = weather_range_a["temp_min"].min()
+        precip_a = weather_range_a["precipitation"].sum()
 
-    st.markdown(  
-        f"<div style='text-align:left;'>"  
-        f"<b>Summary (Range A):</b> Max Temp: {max_temp_a}°F, "  
-        f"Min Temp: {min_temp_a}°F, "  
-        f"Precipitation: {precip_a:.2f} in"  
-        f"</div>",  
-        unsafe_allow_html=True  
-    )  
+        st.markdown(
+            f"<div style='text-align:left;'>"
+            f"<b>Summary (Range A):</b> Max Temp: {max_temp_a}°F, "
+            f"Min Temp: {min_temp_a}°F, "
+            f"Precipitation: {precip_a:.2f} in"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
-if not weather_range_b.empty:  
-    st.write("### Range B Weather Data")  
-    st.dataframe(weather_range_b, use_container_width=True)  
+    if not weather_range_b.empty:
+        st.write("### Range B Weather Data")
+        renamed_b = weather_range_b.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_b, use_container_width=True)
 
-    max_temp_b = weather_range_b["temp_max"].max()  
-    min_temp_b = weather_range_b["temp_min"].min()  
-    precip_b = weather_range_b["precipitation"].sum()  
+        max_temp_b = weather_range_b["temp_max"].max()
+        min_temp_b = weather_range_b["temp_min"].min()
+        precip_b = weather_range_b["precipitation"].sum()
 
-    st.markdown(  
-        f"<div style='text-align:left;'>"  
-        f"<b>Summary (Range B):</b> Max Temp: {max_temp_b}°F, "  
-        f"Min Temp: {min_temp_b}°F, "  
-        f"Precipitation: {precip_b:.2f} in"  
-        f"</div>",  
-        unsafe_allow_html=True  
-    )
-
+        st.markdown(
+            f"<div style='text-align:left;'>"
+            f"<b>Summary (Range B):</b> Max Temp: {max_temp_b}°F, "
+            f"Min Temp: {min_temp_b}°F, "
+            f"Precipitation: {precip_b:.2f} in"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 else:
-st.info("Select two date ranges above to compare detailed weather data.")
-
+    st.info("Select two date ranges above to compare detailed weather data.")
 # === Footer ===
 st.markdown("---")
 st.markdown(
