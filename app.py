@@ -224,7 +224,12 @@ if "range_a" in st.session_state and "range_b" in st.session_state:
 
     if not weather_range_a.empty:
         st.write("### Range A Weather Data")
-        st.dataframe(weather_range_a, use_container_width=True)
+        renamed_a = weather_range_a.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_a, use_container_width=True)
 
         max_temp_a = weather_range_a["temp_max"].max()
         min_temp_a = weather_range_a["temp_min"].min()
@@ -241,7 +246,12 @@ if "range_a" in st.session_state and "range_b" in st.session_state:
 
     if not weather_range_b.empty:
         st.write("### Range B Weather Data")
-        st.dataframe(weather_range_b, use_container_width=True)
+        renamed_b = weather_range_b.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_b, use_container_width=True)
 
         max_temp_b = weather_range_b["temp_max"].max()
         min_temp_b = weather_range_b["temp_min"].min()
