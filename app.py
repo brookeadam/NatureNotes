@@ -87,12 +87,13 @@ ebird_df = load_all_ebird_data(start_date, end_date)
 if not ebird_df.empty:
     merged_df = ebird_df.rename(columns={
         "comName": "Species",
+        "sciName": "Scientific Name",   # ✅ added this
         "howMany": "Count",
         "obsDt": "Date"
     })
     merged_df["Date"] = pd.to_datetime(merged_df["Date"])
 else:
-    merged_df = pd.DataFrame(columns=["Species", "Count", "Date"])
+    merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 # === HEADER ===
 st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
