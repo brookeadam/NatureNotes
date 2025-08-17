@@ -83,16 +83,8 @@ else:
 
 # === Load Data from APIs (After dates are defined) ===
 weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
-
-# === CORRECTED LINE ===
-# Instead of calling load_all_ebird_data(), call the new function.
+# THIS IS THE CORRECTED LINE:
 ebird_df = load_ebird_data_from_file()
-
-# ... (rest of the code below) ...
-
-# === Load Data from APIs (After dates are defined) ===
-weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
-ebird_df = load_all_ebird_data(main_start_date, main_end_date)
 
 # === Data Cleaning & Preprocessing ===
 if not ebird_df.empty:
