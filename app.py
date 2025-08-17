@@ -195,7 +195,8 @@ if st.button("Compare Species and Weather") and range1_start and range1_end and 
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌦️ Weather Trends (Detailed)")
 
-if range_a and range_b:
+# Make sure range_a and range_b exist before trying to use them
+if "range_a" in locals() and "range_b" in locals() and range_a and range_b:
     # Filter weather data for each date range
     weather_range_a = weather_df[
         (weather_df["date"] >= range_a[0]) & (weather_df["date"] <= range_a[1])
