@@ -208,7 +208,6 @@ else:
 
 # === Altair Weather Trends (Detailed) ===
 st.subheader("🌡️ Weather Data by Date Range")
-st.subheader("🌡️ Weather Data by Date Range")
 
 if "range_a" in st.session_state and "range_b" in st.session_state:
     range_a = st.session_state["range_a"]
