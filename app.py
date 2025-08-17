@@ -12,12 +12,7 @@ LONGITUDE = -98.4798
 
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
-# === HEADER ===
-st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
-st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
-
 # === API Fetch Functions ===
-# Place these at the top for organization
 @st.cache_data
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
@@ -69,6 +64,10 @@ def load_all_ebird_data(start_date, end_date):
     if dfs:
         return pd.concat(dfs, ignore_index=True)
     return pd.DataFrame()
+
+# === HEADER ===
+st.title("🌳 Nature Notes: Headwaters at Incarnate Word")
+st.caption("Explore bird sightings and weather patterns side-by-side. Updated biweekly.")
 
 # === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings")
@@ -122,20 +121,29 @@ else:
 # === Weather Metrics ===
 st.subheader("🌡️ Weather Metrics")
 weather_filtered = weather_df.copy()
-weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"]) # Ensure Date is datetime
+weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
 weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
 
 if not weather_filtered.empty:
-    max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
-    max_temp = max_temp_row["temp_max"]
-    max_temp_date = max_temp_row["Date"]
-
-    min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
-    min_temp = min_temp_row["temp_min"]
-    min_temp_date = min_temp_row["Date"]
-
-    st.metric(label=f"Max Temp (F) on {max_temp_date.date()}", value=f"{max_temp:.1f}")
-    st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
+    col1, col2 = st.columns(2)
+    with col1:
+        max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
+        max_temp = max_temp_row["temp_max"]
+        max_temp_date = max_temp_row["Date"]
+        st.metric(label=f"Max Temp (F) on {max_temp_date.date()}", value=f"{max_temp:.1f}")
+    with col2:
+        min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
+        min_temp = min_temp_row["temp_min"]
+        min_temp_date = min_temp_row["Date"]
+        st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
+    
+    st.subheader("Daily Weather Data")
+    display_weather_df = weather_filtered.rename(columns={
+        "temp_max": "Max Temp °F",
+        "temp_min": "Min Temp °F",
+        "precipitation": "Total Precip in"
+    })
+    st.dataframe(display_weather_df, use_container_width=True)
 else:
     st.warning("No weather data available for the selected date range.")
 
@@ -192,17 +200,25 @@ if st.button("Compare Species and Weather"):
 
     if not weather_range_a.empty:
         st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
-        max_temp_a = weather_range_a["temp_max"].max()
-        min_temp_a = weather_range_a["temp_min"].min()
-        precip_a = weather_range_a["precipitation"].sum()
-        st.info(f"Max Temp: {max_temp_a}°F, Min Temp: {min_temp_a}°F, Total Precip: {precip_a:.2f} in")
+        renamed_a = weather_range_a.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_a, use_container_width=True)
+    else:
+        st.info("No weather data for Range A.")
 
     if not weather_range_b.empty:
         st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end})**")
-        max_temp_b = weather_range_b["temp_max"].max()
-        min_temp_b = weather_range_b["temp_min"].min()
-        precip_b = weather_range_b["precipitation"].sum()
-        st.info(f"Max Temp: {max_temp_b}°F, Min Temp: {min_temp_b}°F, Total Precip: {precip_b:.2f} in")
+        renamed_b = weather_range_b.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_b, use_container_width=True)
+    else:
+        st.info("No weather data for Range B.")
         
 # === Footer ===
 st.markdown("---")
@@ -211,5 +227,4 @@ st.markdown(
     "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
     "</div>",
     unsafe_allow_html=True
-    )
-    
+)
