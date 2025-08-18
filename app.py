@@ -138,24 +138,24 @@ if not weather_filtered.empty:
         st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
     
     st.subheader("Daily Weather Data")
-    
-    # Create a copy of the dataframe for display to avoid SettingWithCopyWarning
-    display_weather_df = weather_filtered.copy()
-    
-    # Format the 'Date' column as YYYY-MM-DD string
-    display_weather_df["Date"] = display_weather_df["Date"].dt.strftime("%Y-%m-%d")
-    
-    # Rename the columns for display
-    display_weather_df = display_weather_df.rename(columns={
-        "temp_max": "Max Temp °F",
-        "temp_min": "Min Temp °F",
-        "precipitation": "Total Precip in"
-    })
-    
-    st.dataframe(display_weather_df, use_container_width=True)
+    
+# Create a copy of the dataframe for display to avoid SettingWithCopyWarning
+display_weather_df = weather_filtered.copy()
+    
+# Format the 'Date' column as YYYY-MM-DD string
+display_weather_df["Date"] = display_weather_df["Date"].dt.strftime("%Y-%m-%d")
+    
+# Rename the columns for display
+display_weather_df = display_weather_df.rename(columns={
+    "temp_max": "Max Temp °F",
+    "temp_min": "Min Temp °F",
+    "precipitation": "Total Precip in"
+})
+    
+# Add index=False to hide the index column
+st.dataframe(display_weather_df, use_container_width=True, index=False)
 else:
-    st.warning("No weather data available for the selected date range.")
-    
+    st.warning("No weather data available for the selected date range.")
 
 # === Species Count Comparison ===
 st.subheader("📊 Species Comparison by Date Range")
