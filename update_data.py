@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 # === Constants ===
 # Add your region code here
-EBIRD_REGION_CODE = "US-TX-029" 
+EBIRD_REGION_CODE = "US-TX-029"
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
@@ -21,7 +21,7 @@ def fetch_ebird_data(loc_id, start_date):
         "maxResults": 10000,
     }
     
-    print(f"Fetching data for location {loc_id} with URL: {url.format(loc_id=loc_id)} and params: {params}")
+    print(f"Fetching data for location {loc_id} with URL: {url} and params: {params}")
 
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
@@ -34,22 +34,11 @@ def main():
     # Create data directory if it doesn't exist
     DATA_DIR.mkdir(exist_ok=True)
     
-    # Check if the data file exists to determine if this is the first run
-    if EBIRD_DATA_FILE.exists():
-        existing_df = pd.read_parquet(EBIRD_DATA_FILE)
-        # Determine the last date in the existing data
-        last_obs_date = pd.to_datetime(existing_df['obsDt']).max().date()
-        # Set the API start date to the day after the last observation
-        start_date = last_obs_date + timedelta(days=1)
-        print("Existing data found. Updating from last observation date.")
-    else:
-        existing_df = pd.DataFrame()
-        # For the first run, pull ALL historical data from a very early date
-        start_date = datetime(1900, 1, 1).date()
-        print("No existing data found. Fetching ALL historical data.")
+    # For the first run, pull ALL historical data from a very early date
+    start_date = datetime(1900, 1, 1).date()
+    print("Fetching ALL historical data from 1900...")
         
     all_new_obs = []
-    print(f"Fetching eBird data from {start_date} to today...")
     
     for loc_id in HEADWATERS_LOCATIONS:
         try:
@@ -60,11 +49,11 @@ def main():
             
     if all_new_obs:
         new_df = pd.DataFrame(all_new_obs)
-        combined_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=['subId']).reset_index(drop=True)
-        combined_df.to_parquet(EBIRD_DATA_FILE, index=False)
-        print(f"Successfully updated data with {len(new_df)} new observations.")
+        # Drop duplicates based on 'subId' and save to parquet file
+        new_df.drop_duplicates(subset=['subId']).to_parquet(EBIRD_DATA_FILE, index=False)
+        print(f"Successfully created initial data file with {len(new_df)} observations.")
     else:
-        print("No new data to add.")
+        print("No data was fetched. The data file was not created.")
 
 if __name__ == "__main__":
     main()
