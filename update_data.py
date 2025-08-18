@@ -12,15 +12,17 @@ EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_ebird_data(loc_id, start_date):
     """Fetches eBird data from the specified start date up to today."""
-    url = "https://api.ebird.org/v2/data/obs/{{loc_id}}/historic"
+    url = f"https://api.ebird.org/v2/data/obs/US-TX-029/historic/{{loc_id}}"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
         "maxResults": 10000,
     }
     
+    print(f"Fetching data for location {loc_id} with URL: {url.format(loc_id=loc_id)} and params: {params}")
+
     response = requests.get(url.format(loc_id=loc_id), headers=headers, params=params)
-    response.raise_for_status()
+    response.raise_for_status()  # This will raise an exception for bad status codes
     return response.json()
 
 def main():
