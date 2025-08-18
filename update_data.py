@@ -7,7 +7,8 @@ from datetime import datetime
 # === Constants ===
 # Add your region code here
 EBIRD_REGION_CODE = "US-TX-029"
-HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
+# Use a single locality ID
+HEADWATERS_LOCATIONS = ["L1210588"]
 DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
