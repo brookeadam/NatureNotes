@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # === Constants ===
-# Add your region code here (e.g., "US-TX" for Texas, United States)
+# Add your region code here
 EBIRD_REGION_CODE = "US-TX-029" 
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 DATA_DIR = Path("data")
@@ -24,7 +24,7 @@ def fetch_ebird_data(loc_id, start_date):
     print(f"Fetching data for location {loc_id} with URL: {url.format(loc_id=loc_id)} and params: {params}")
 
     response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()  # This will raise an exception for bad status codes
+    response.raise_for_status()
     return response.json()
 
 def main():
@@ -34,7 +34,7 @@ def main():
     # Create data directory if it doesn't exist
     DATA_DIR.mkdir(exist_ok=True)
     
-    # Load existing data or create an empty DataFrame
+    # Check if the data file exists to determine if this is the first run
     if EBIRD_DATA_FILE.exists():
         existing_df = pd.read_parquet(EBIRD_DATA_FILE)
         # Determine the last date in the existing data
