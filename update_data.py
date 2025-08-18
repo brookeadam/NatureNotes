@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import requests
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # === Constants ===
 # Add your region code here
@@ -22,7 +22,7 @@ def fetch_ebird_data(loc_id, start_date):
     }
     
     print(f"Fetching data for location {loc_id} with URL: {url} and params: {params}")
-
+    
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     return response.json()
@@ -49,7 +49,6 @@ def main():
             
     if all_new_obs:
         new_df = pd.DataFrame(all_new_obs)
-        # Drop duplicates based on 'subId' and save to parquet file
         new_df.drop_duplicates(subset=['subId']).to_parquet(EBIRD_DATA_FILE, index=False)
         print(f"Successfully created initial data file with {len(new_df)} observations.")
     else:
