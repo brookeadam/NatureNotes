@@ -32,6 +32,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/ebird_data.parquet
-          git commit -m "Automated eBird data update" || echo "No changes to commit"
+          git add data/ebird_data.parquet || true
+          git commit -m "Automated eBird data update" || true
           git push
