@@ -2,7 +2,7 @@ name: Biweekly eBird Data Update
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Runs at 00:00 on Monday
+    - cron: '0 0 * * 0' # Runs at 00:00 on Sunday
   workflow_dispatch:
     # Allows for manual triggering of the workflow
 
@@ -24,12 +24,11 @@ jobs:
           pip install pandas requests python-dateutil pyarrow
 
       - name: Run data update script
-        run: |
-          python update_data.py
+        run: python update_data.py
         env:
           EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
 
-      - - name: Commit and push changes
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
