@@ -223,7 +223,7 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_a, use_container_width=True, index=False)
+        st.dataframe(renamed_a, use_container_width=True)
     else:
         st.info("No weather data for Range A.")
 
