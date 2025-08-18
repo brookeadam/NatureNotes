@@ -137,8 +137,7 @@ if not weather_filtered.empty:
         min_temp_date = min_temp_row["Date"]
         st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
     
-    st.subheader("Daily Weather Data")
-    
+st.subheader("Daily Weather Data")
 # Create a copy of the dataframe for display to avoid SettingWithCopyWarning
 display_weather_df = weather_filtered.copy()
     
