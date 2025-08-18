@@ -168,6 +168,8 @@ with col2:
     range2_start = st.date_input("Range 2 Start", key="range2_start")
     range2_end = st.date_input("Range 2 End", key="range2_end")
 
+# ... (rest of the code before the button) ...
+
 if st.button("Compare Species and Weather"):
     # Filter bird data
     range_a_birds = merged_df[
@@ -208,41 +210,41 @@ if st.button("Compare Species and Weather"):
     weather_range_a = weather_df[(weather_df["Date"] >= pd.to_datetime(range1_start)) & (weather_df["Date"] <= pd.to_datetime(range1_end))]
     weather_range_b = weather_df[(weather_df["Date"] >= pd.to_datetime(range2_start)) & (weather_df["Date"] <= pd.to_datetime(range2_end))]
 
-if not weather_range_a.empty:
-    st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
-    
-    # Create a copy to avoid a SettingWithCopyWarning
-    renamed_a = weather_range_a.copy()
-    
-    # Convert 'Date' column to YYYY-MM-DD string format
-    renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-    
-    renamed_a = renamed_a.rename(columns={
-        "temp_max": "Max Temp °F",
-        "temp_min": "Min Temp °F",
-        "precipitation": "Total Precip in"
-    })
-    st.dataframe(renamed_a, use_container_width=True)
-else:
-    st.info("No weather data for Range A.")
+    if not weather_range_a.empty:
+        st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
+        
+        # Create a copy to avoid a SettingWithCopyWarning
+        renamed_a = weather_range_a.copy()
+        
+        # Convert 'Date' column to YYYY-MM-DD string format
+        renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
+        
+        renamed_a = renamed_a.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_a, use_container_width=True)
+    else:
+        st.info("No weather data for Range A.")
 
-if not weather_range_b.empty:
-    st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end})**")
-    
-    # Create a copy to avoid a SettingWithCopyWarning
-    renamed_b = weather_range_b.copy()
-    
-    # Convert 'Date' column to YYYY-MM-DD string format
-    renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
-    
-    renamed_b = renamed_b.rename(columns={
-        "temp_max": "Max Temp °F",
-        "temp_min": "Min Temp °F",
-        "precipitation": "Total Precip in"
-    })
-    st.dataframe(renamed_b, use_container_width=True)
-else:
-    st.info("No weather data for Range B.")
+    if not weather_range_b.empty:
+        st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end})**")
+        
+        # Create a copy to avoid a SettingWithCopyWarning
+        renamed_b = weather_range_b.copy()
+        
+        # Convert 'Date' column to YYYY-MM-DD string format
+        renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
+        
+        renamed_b = renamed_b.rename(columns={
+            "temp_max": "Max Temp °F",
+            "temp_min": "Min Temp °F",
+            "precipitation": "Total Precip in"
+        })
+        st.dataframe(renamed_b, use_container_width=True)
+    else:
+        st.info("No weather data for Range B.")
     
 # === Footer ===
 st.markdown("---")
