@@ -13,16 +13,19 @@ EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_ebird_data(loc_id, start_date):
     """Fetches eBird data from the specified start date up to today."""
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/"
+    # This endpoint is for recent observations, which is what we need to append.
+    url = f"https://api.ebird.org/v2/data/obs/loc/{{loc_id}}"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
-        "startDate": start_date.strftime("%Y-%m-%d"),
+        # The 'back' parameter specifies the number of days to go back.
+        # Use a large number to get as much data as possible, or a more recent date for updates.
+        "back": (datetime.now().date() - start_date).days,
         "maxResults": 10000,
     }
     
     print(f"Fetching data for location {loc_id} with URL: {url} and params: {params}")
     
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(url.format(loc_id=loc_id), headers=headers, params=params)
     response.raise_for_status()
     return response.json()
 
