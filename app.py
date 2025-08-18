@@ -156,7 +156,7 @@ if not weather_filtered.empty:
 else:
     st.warning("No weather data available for the selected date range.")
     
-# === Species Count Comparison ===
+# === Species Count Comparison ==
 st.subheader("📊 Species Comparison by Date Range")
 
 col1, col2 = st.columns(2)
@@ -167,10 +167,9 @@ with col2:
     range2_start = st.date_input("Range 2 Start", key="range2_start")
     range2_end = st.date_input("Range 2 End", key="range2_end")
 
-# ... (rest of the code before the button) ...
-
 if st.button("Compare Species and Weather"):
     # Filter bird data
+    # This filters the complete 'merged_df' loaded from the .parquet file
     range_a_birds = merged_df[
         (merged_df["Date"] >= pd.to_datetime(range1_start)) &
         (merged_df["Date"] <= pd.to_datetime(range1_end))
@@ -206,8 +205,9 @@ if st.button("Compare Species and Weather"):
 
     # Weather comparison
     st.markdown("### 🌡️ Weather Trends (Detailed)")
-    weather_range_a = weather_df[(weather_df["Date"] >= pd.to_datetime(range1_start)) & (weather_df["Date"] <= pd.to_datetime(range1_end))]
-    weather_range_b = weather_df[(weather_df["Date"] >= pd.to_datetime(range2_start)) & (weather_df["Date"] <= pd.to_datetime(range2_end))]
+    # NEW CODE: Fetch weather data specifically for each comparison range
+    weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
+    weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
 
     if not weather_range_a.empty:
         st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
@@ -223,7 +223,7 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_a, use_container_width=True)
+        st.dataframe(renamed_a, use_container_width=True, index=False)
     else:
         st.info("No weather data for Range A.")
 
@@ -241,7 +241,7 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_b, use_container_width=True)
+        st.dataframe(renamed_b, use_container_width=True, index=False)
     else:
         st.info("No weather data for Range B.")
     
