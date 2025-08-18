@@ -2,7 +2,7 @@ name: Biweekly eBird Data Update
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Runs at 00:00 on Sunday
+    - cron: '0 0 * * 0' # Runs at 00:00 on Monday
   workflow_dispatch:
     # Allows for manual triggering of the workflow
 
