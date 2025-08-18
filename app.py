@@ -152,7 +152,7 @@ if not weather_filtered.empty:
     })
     
     # Add index=False to hide the index column
-    st.dataframe(display_weather_df, use_container_width=True, index=False)
+    st.dataframe(display_weather_df, use_container_width=True)
 else:
     st.warning("No weather data available for the selected date range.")
     
