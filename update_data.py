@@ -1,58 +1,66 @@
 import os
 import pandas as pd
 import requests
-import datetime
-from dateutil.relativedelta import relativedelta
 from pathlib import Path
+from datetime import datetime, timedelta
 
-# --- Constants ---
-# Make sure to set this as a GitHub Secret, not hardcoded!
-EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY") 
+# === Constants ===
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
-OUTPUT_FILE = DATA_DIR / "ebird_data.parquet"
+EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
+EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-# === API Fetch: eBird ===
-def fetch_ebird_data(loc_id, date):
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/{date.strftime('%Y/%m/%d')}"
+def fetch_ebird_data(loc_id, start_date):
+    """Fetches eBird data from the specified start date up to today."""
+    url = "https://api.ebird.org/v2/data/obs/{{loc_id}}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return pd.DataFrame(response.json())
-    return pd.DataFrame()
+    params = {
+        "startDate": start_date.strftime("%Y-%m-%d"),
+        "maxResults": 10000,
+    }
+    
+    response = requests.get(url.format(loc_id=loc_id), headers=headers, params=params)
+    response.raise_for_status()
+    return response.json()
 
-def load_all_ebird_data(start_date, end_date):
-    dfs = []
-    date_range = pd.date_range(start_date, end_date)
-    for loc in HEADWATERS_LOCATIONS:
-        for date in date_range:
-            df = fetch_ebird_data(loc, date)
-            if not df.empty:
-                dfs.append(df)
-    if dfs:
-        return pd.concat(dfs, ignore_index=True)
-    return pd.DataFrame()
+def main():
+    if not EBIRD_API_KEY:
+        raise ValueError("EBIRD_API_KEY not found in environment variables.")
+        
+    # Create data directory if it doesn't exist
+    DATA_DIR.mkdir(exist_ok=True)
+    
+    # Load existing data or create an empty DataFrame
+    if EBIRD_DATA_FILE.exists():
+        existing_df = pd.read_parquet(EBIRD_DATA_FILE)
+        # Determine the last date in the existing data
+        last_obs_date = pd.to_datetime(existing_df['obsDt']).max().date()
+        # Set the API start date to the day after the last observation
+        start_date = last_obs_date + timedelta(days=1)
+        print("Existing data found. Updating from last observation date.")
+    else:
+        existing_df = pd.DataFrame()
+        # For the first run, pull ALL historical data from a very early date
+        start_date = datetime(1900, 1, 1).date()
+        print("No existing data found. Fetching ALL historical data.")
+        
+    all_new_obs = []
+    print(f"Fetching eBird data from {start_date} to today...")
+    
+    for loc_id in HEADWATERS_LOCATIONS:
+        try:
+            new_data = fetch_ebird_data(loc_id, start_date)
+            all_new_obs.extend(new_data)
+        except requests.exceptions.HTTPError as e:
+            print(f"Error fetching data for location {loc_id}: {e}")
+            
+    if all_new_obs:
+        new_df = pd.DataFrame(all_new_obs)
+        combined_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=['subId']).reset_index(drop=True)
+        combined_df.to_parquet(EBIRD_DATA_FILE, index=False)
+        print(f"Successfully updated data with {len(new_df)} new observations.")
+    else:
+        print("No new data to add.")
 
 if __name__ == "__main__":
-    # Define a date range to fetch data.
-    # We'll fetch data for the last 14 days, as per your "biweekly" requirement.
-    end_date = datetime.date.today()
-    start_date = end_date - datetime.timedelta(days=14)
-    
-    print(f"Fetching eBird data from {start_date} to {end_date}...")
-    df = load_all_ebird_data(start_date, end_date)
-    
-    if not df.empty:
-        # Load existing data if it exists
-        if OUTPUT_FILE.exists():
-            existing_df = pd.read_parquet(OUTPUT_FILE)
-            # Remove duplicate observations and keep the newest ones
-            combined_df = pd.concat([existing_df, df]).drop_duplicates(subset=['subId'], keep='last')
-            df = combined_df
-        
-        # Save the combined DataFrame to a file. Parquet is efficient.
-        df.to_parquet(OUTPUT_FILE)
-        print(f"Successfully saved {len(df)} observations to {OUTPUT_FILE}")
-    else:
-        print("No new eBird data was fetched.")
+    main()
