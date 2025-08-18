@@ -13,7 +13,7 @@ EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_ebird_data(loc_id, start_date):
     """Fetches eBird data from the specified start date up to today."""
-    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic"
+    url = f"https://api.ebird.org/v2/data/obs/{loc_id}/historic/"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
