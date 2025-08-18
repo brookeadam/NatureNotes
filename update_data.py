@@ -5,6 +5,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # === Constants ===
+# Add your region code here (e.g., "US-TX" for Texas, United States)
+EBIRD_REGION_CODE = "US-TX-029" 
 HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
@@ -12,7 +14,7 @@ EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_ebird_data(loc_id, start_date):
     """Fetches eBird data from the specified start date up to today."""
-    url = f"https://api.ebird.org/v2/data/obs/{{loc_id}}/historic"
+    url = f"https://api.ebird.org/v2/data/obs/{EBIRD_REGION_CODE}/historic/{loc_id}"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
@@ -21,10 +23,10 @@ def fetch_ebird_data(loc_id, start_date):
     
     print(f"Fetching data for location {loc_id} with URL: {url.format(loc_id=loc_id)} and params: {params}")
 
-    response = requests.get(url.format(loc_id=loc_id), headers=headers, params=params)
+    response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()  # This will raise an exception for bad status codes
     return response.json()
-    
+
 def main():
     if not EBIRD_API_KEY:
         raise ValueError("EBIRD_API_KEY not found in environment variables.")
