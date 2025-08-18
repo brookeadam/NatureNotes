@@ -24,11 +24,10 @@ jobs:
           pip install pandas requests python-dateutil pyarrow
 
       - name: Run data update script
-        env:
-          # This pulls your API key from the GitHub Secrets
-          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
         run: |
           python update_data.py
+        env:
+          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
 
       - name: Commit and push changes
         run: |
