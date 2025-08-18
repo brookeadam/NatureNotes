@@ -33,9 +33,9 @@ def main():
     # Create data directory if it doesn't exist
     DATA_DIR.mkdir(exist_ok=True)
     
-    # For the first run, pull ALL historical data from a very early date
-    start_date = datetime(1900, 1, 1).date()
-    print("Fetching ALL historical data from 1900...")
+    # # For the first run, pull ALL historical data from a more reasonable date
+    start_date = datetime(2000, 1, 1).date()
+    print("Fetching ALL historical data from 2000...")
         
     all_new_obs = []
     
