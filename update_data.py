@@ -12,34 +12,40 @@ EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_ebird_data_in_chunks(region_id, start_date):
-    """Fetches historical eBird data for a region year by year."""
+    """Fetches historical eBird data for a region in 30-day chunks."""
     all_data = []
     
-    current_year = datetime.now().year
-    start_year = start_date.year
+    # Set the end date for the entire pull to today
+    end_of_pull_date = datetime.now().date()
 
-    for year in range(start_year, current_year + 1):
-        chunk_start_date = max(datetime(year, 1, 1).date(), start_date)
-        chunk_end_date = datetime(year, 12, 31).date()
-
+    # Loop through 30-day chunks
+    current_chunk_start_date = start_date
+    while current_chunk_start_date <= end_of_pull_date:
+        chunk_end_date = current_chunk_start_date + timedelta(days=29)
+        
+        # Ensure the chunk doesn't go past today
+        if chunk_end_date > end_of_pull_date:
+            chunk_end_date = end_of_pull_date
+            
         url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
         headers = {"X-eBirdApiToken": EBIRD_API_KEY}
         params = {
-            "startDate": chunk_start_date.strftime("%Y-%m-%d"),
+            "startDate": current_chunk_start_date.strftime("%Y-%m-%d"),
             "endDate": chunk_end_date.strftime("%Y-%m-%d"),
             "maxResults": 10000,
             "spp_only": True,
         }
         
-        print(f"Fetching data for region {region_id} for year {year}...")
+        print(f"Fetching data for region {region_id} from {current_chunk_start_date} to {chunk_end_date}...")
         
         try:
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
             all_data.extend(response.json())
         except requests.exceptions.HTTPError as e:
-            print(f"Error fetching data for year {year}: {e}")
-            continue
+            print(f"Error fetching data for chunk: {e}")
+            
+        current_chunk_start_date += timedelta(days=30)
             
     return all_data
 
