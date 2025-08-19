@@ -11,22 +11,42 @@ DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-def fetch_all_historical_data(region_id):
-    """Fetches all historical eBird data for a region using a single API call."""
-    url = f"https://api.ebird.org/v2/data/obs/region/{region_id}"
-    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    params = {
-        # The 'back' parameter specifies the number of days to go back.
-        # Use a very large number to get as much historical data as possible.
-        "back": 999999,
-        "maxResults": 10000,
-    }
+def fetch_ebird_data_in_chunks(region_id, start_date):
+    """Fetches historical eBird data for a region in 30-day chunks."""
+    all_data = []
     
-    print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
-    
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-    return response.json()
+    # Set the end date for the entire pull to today
+    end_of_pull_date = datetime.now().date()
+
+    # Loop through 30-day chunks
+    current_chunk_start_date = start_date
+    while current_chunk_start_date <= end_of_pull_date:
+        chunk_end_date = current_chunk_start_date + timedelta(days=29)
+        
+        # Ensure the chunk doesn't go past today
+        if chunk_end_date > end_of_pull_date:
+            chunk_end_date = end_of_pull_date
+            
+        url = f"https://api.ebird.org/v2/data/obs/region/{region_id}"
+        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+        params = {
+            "startDate": current_chunk_start_date.strftime("%Y-%m-%d"),
+            "endDate": chunk_end_date.strftime("%Y-%m-%d"),
+            "maxResults": 10000,
+        }
+        
+        print(f"Fetching data for region {region_id} from {current_chunk_start_date} to {chunk_end_date}...")
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            all_data.extend(response.json())
+        except requests.exceptions.HTTPError as e:
+            print(f"Error fetching data for chunk: {e}")
+            
+        current_chunk_start_date += timedelta(days=30)
+            
+    return all_data
 
 def main():
     if not EBIRD_API_KEY:
@@ -44,7 +64,9 @@ def main():
         start_date = datetime(2000, 1, 1).date()
         print("No existing data found. Fetching ALL historical data from 2000.")
         
-    all_new_obs = fetch_all_historical_data(EBIRD_REGION_CODE)
+    print(f"Fetching eBird data from {start_date} to today...")
+    
+    all_new_obs = fetch_ebird_data_in_chunks(EBIRD_REGION_CODE, start_date)
         
     if all_new_obs:
         new_df = pd.DataFrame(all_new_obs)
