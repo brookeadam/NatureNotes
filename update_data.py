@@ -18,10 +18,11 @@ def fetch_ebird_data(region_id, start_date):
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
         "maxResults": 10000,
+        "spp_only": True,  # This is the new, required parameter
     }
-    
+
     print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
-    
+
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     return response.json()
