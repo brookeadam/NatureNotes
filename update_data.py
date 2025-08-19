@@ -11,22 +11,33 @@ DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-def fetch_ebird_data(region_id):
-    """Fetches a large amount of recent eBird data for a region."""
-    url = f"https://api.ebird.org/v2/data/obs/region/{region_id}"
-    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
-    params = {
-        # The 'back' parameter specifies the number of days to go back.
-        # Use a very large number to get as much historical data as possible.
-        "back": 999999,  
-        "maxResults": 10000,
-    }
+def fetch_ebird_data_in_chunks(region_id, start_year):
+    """Fetches historical eBird data for a region year by year."""
+    all_data = []
+    current_year = datetime.now().year
     
-    print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
-    
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-    return response.json()
+    for year in range(start_year, current_year + 1):
+        start_date = datetime(year, 1, 1).strftime("%Y-%m-%d")
+        end_date = datetime(year, 12, 31).strftime("%Y-%m-%d")
+        
+        url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
+        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+        params = {
+            "startDate": start_date,
+            "endDate": end_date,
+        }
+        
+        print(f"Fetching data for region {region_id} for year {year}...")
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            all_data.extend(response.json())
+        except requests.exceptions.HTTPError as e:
+            print(f"Error fetching data for year {year}: {e}")
+            continue
+            
+    return all_data
 
 def main():
     if not EBIRD_API_KEY:
@@ -35,14 +46,16 @@ def main():
     # Create data directory if it doesn't exist
     DATA_DIR.mkdir(exist_ok=True)
     
-    all_new_obs = []
-    print("Fetching ALL historical data...")
-    
-    try:
-        new_data = fetch_ebird_data(EBIRD_REGION_CODE)
-        all_new_obs.extend(new_data)
-    except requests.exceptions.HTTPError as e:
-        print(f"Error fetching data for region {EBIRD_REGION_CODE}: {e}")
+    # Check if the data file exists to determine if this is the first run
+    if EBIRD_DATA_FILE.exists():
+        existing_df = pd.read_parquet(EBIRD_DATA_FILE)
+        print("Existing data found. No updates will be made on this run.")
+        print("This script is designed for the initial historical pull only.")
+        return
+    else:
+        print("No existing data found. Fetching ALL historical data.")
+        
+    all_new_obs = fetch_ebird_data_in_chunks(EBIRD_REGION_CODE, start_year=2000)
         
     if all_new_obs:
         new_df = pd.DataFrame(all_new_obs)
@@ -50,7 +63,11 @@ def main():
         # Filter the data to include only your specific locations
         filtered_df = new_df[new_df['locId'].isin(HEADWATERS_LOCATIONS)]
         
-        filtered_df.to_parquet(EBIRD_DATA_FILE, index=False)
+        filtered_df.drop_duplicates(subset=['subId']).to_parquet(EBIRD_DATA_FILE, index=False)
         print(f"Successfully created initial data file with {len(filtered_df)} observations.")
     else:
-        print("No data was fetched.")
+        print("No data was fetched. The data file was not created.")
+
+if __name__ == "__main__":
+    main()
+    
