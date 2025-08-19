@@ -53,4 +53,4 @@ def main():
         filtered_df.to_parquet(EBIRD_DATA_FILE, index=False)
         print(f"Successfully created initial data file with {len(filtered_df)} observations.")
     else:
-        print("No data was fetched.
+        print("No data was fetched.")
