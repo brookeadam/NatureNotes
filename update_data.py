@@ -16,7 +16,7 @@ def fetch_ebird_data(region_id, start_date):
     url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
-        "startDate": start_date.strftime("%Y-%m-%d"),
+        "back": 99999,
         "maxResults": 10000,
         "spp_only": True,
     }
