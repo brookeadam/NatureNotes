@@ -27,7 +27,7 @@ def fetch_ebird_data_in_chunks(region_id, start_date):
         if chunk_end_date > end_of_pull_date:
             chunk_end_date = end_of_pull_date
             
-        url = f"https://api.ebird.org/v2/data/obs/region/{region_id}/"
+        url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
         headers = {"X-eBirdApiToken": EBIRD_API_KEY}
         params = {
             "startDate": current_chunk_start_date.strftime("%Y-%m-%d"),
