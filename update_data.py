@@ -11,17 +11,19 @@ DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-def fetch_ebird_data(region_id, start_date):
-    """Fetches eBird data from the specified start date for a region."""
-    url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
+def fetch_ebird_data(region_id):
+    """Fetches a large amount of recent eBird data for a region."""
+    url = f"https://api.ebird.org/v2/data/obs/region/{region_id}"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
-        "startDate": start_date.strftime("%Y-%m-%d"),
+        # The 'back' parameter specifies the number of days to go back.
+        # Use a very large number to get as much historical data as possible.
+        "back": 999999,  
         "maxResults": 10000,
     }
-
+    
     print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
-
+    
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     return response.json()
@@ -33,22 +35,11 @@ def main():
     # Create data directory if it doesn't exist
     DATA_DIR.mkdir(exist_ok=True)
     
-    # Check if the data file exists to determine if this is the first run
-    if EBIRD_DATA_FILE.exists():
-        existing_df = pd.read_parquet(EBIRD_DATA_FILE)
-        last_obs_date = pd.to_datetime(existing_df['obsDt']).max().date()
-        start_date = last_obs_date + timedelta(days=1)
-        print("Existing data found. Updating from last observation date.")
-    else:
-        existing_df = pd.DataFrame()
-        start_date = datetime(2000, 1, 1).date()
-        print("No existing data found. Fetching ALL historical data from 2000.")
-        
     all_new_obs = []
-    print(f"Fetching eBird data from {start_date} to today...")
+    print("Fetching ALL historical data...")
     
     try:
-        new_data = fetch_ebird_data(EBIRD_REGION_CODE, start_date)
+        new_data = fetch_ebird_data(EBIRD_REGION_CODE)
         all_new_obs.extend(new_data)
     except requests.exceptions.HTTPError as e:
         print(f"Error fetching data for region {EBIRD_REGION_CODE}: {e}")
@@ -59,11 +50,7 @@ def main():
         # Filter the data to include only your specific locations
         filtered_df = new_df[new_df['locId'].isin(HEADWATERS_LOCATIONS)]
         
-        combined_df = pd.concat([existing_df, filtered_df]).drop_duplicates(subset=['subId']).reset_index(drop=True)
-        combined_df.to_parquet(EBIRD_DATA_FILE, index=False)
-        print(f"Successfully updated data with {len(filtered_df)} new observations for your locations.")
+        filtered_df.to_parquet(EBIRD_DATA_FILE, index=False)
+        print(f"Successfully created initial data file with {len(filtered_df)} observations.")
     else:
-        print("No new data to add.")
-
-if __name__ == "__main__":
-    main()
+        print("No data was fetched.
