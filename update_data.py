@@ -11,18 +11,17 @@ DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-def fetch_ebird_data(loc_id):
-    """Fetches all eBird data for a location since the start of eBird."""
-    url = f"https://api.ebird.org/v2/data/obs/loc/{loc_id}"
+def fetch_ebird_data(region_id, start_date):
+    """Fetches eBird data from the specified start date for a region."""
+    url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
-        # The 'back' parameter specifies the number of days to go back.
-        # Use a large number to get as much data as possible.
-        "back": 999999,  
+        "startDate": start_date.strftime("%Y-%m-%d"),
         "maxResults": 10000,
+        "spp_only": True,
     }
     
-    print(f"Fetching data for location {loc_id} with URL: {url} and params: {params}")
+    print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
     
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
