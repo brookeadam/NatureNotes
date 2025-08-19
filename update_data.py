@@ -11,22 +11,21 @@ DATA_DIR = Path("data")
 EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-def fetch_ebird_data_in_chunks(region_id, start_date):
-    """Fetches historical eBird data for a region year by year or from a start date."""
+def fetch_ebird_data_in_chunks(region_id, start_year):
+    """Fetches historical eBird data for a region year by year."""
     all_data = []
-    
     current_year = datetime.now().year
-    start_year = start_date.year
-
+    
     for year in range(start_year, current_year + 1):
-        chunk_start_date = max(datetime(year, 1, 1).date(), start_date)
-        chunk_end_date = datetime(year, 12, 31).date()
-
+        start_date = datetime(year, 1, 1).strftime("%Y-%m-%d")
+        end_date = datetime(year, 12, 31).strftime("%Y-%m-%d")
+        
         url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
         headers = {"X-eBirdApiToken": EBIRD_API_KEY}
         params = {
-            "startDate": chunk_start_date.strftime("%Y-%m-%d"),
-            "endDate": chunk_end_date.strftime("%Y-%m-%d"),
+            "startDate": start_date,
+            "endDate": end_date,
+            "maxResults": 10000,
         }
         
         print(f"Fetching data for region {region_id} for year {year}...")
