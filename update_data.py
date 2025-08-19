@@ -16,13 +16,13 @@ def fetch_ebird_data(region_id, start_date):
     url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
-        "back": 99999,
+        "startDate": start_date.strftime("%Y-%m-%d"),
         "maxResults": 10000,
         "spp_only": True,
     }
-
+    
     print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
-
+    
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     return response.json()
