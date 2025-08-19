@@ -28,6 +28,7 @@ def fetch_ebird_data_in_chunks(region_id, start_date):
             "startDate": chunk_start_date.strftime("%Y-%m-%d"),
             "endDate": chunk_end_date.strftime("%Y-%m-%d"),
             "maxResults": 10000,
+            "spp_only": True,
         }
         
         print(f"Fetching data for region {region_id} for year {year}...")
