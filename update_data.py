@@ -13,12 +13,12 @@ EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_ebird_data(region_id, start_date):
     """Fetches eBird data from the specified start date for a region."""
-    url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic/"
+    url = f"https://api.ebird.org/v2/data/obs/{region_id}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
         "maxResults": 10000,
-        "spp_only": True,  # This is the new, required parameter
+        "spp_only": True,
     }
 
     print(f"Fetching data for region {region_id} with URL: {url} and params: {params}")
