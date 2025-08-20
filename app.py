@@ -71,15 +71,8 @@ MAX_DATE = datetime.date(2035, 12, 31)
 # === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings")
 st.subheader("⏱️ Filter by Date Range")
-quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=1, key="main_range")
+quick_range = st.radio("Select Range", ["Custom Range"], index=1, key="main_range")
 
-if quick_range == "Last 7 Days":
-    main_start_date = datetime.date.today() - datetime.timedelta(days=7)
-    main_end_date = datetime.date.today()
-elif quick_range == "This Month":
-    today = datetime.date.today()
-    main_start_date = today.replace(day=1)
-    main_end_date = today
 else:
     main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
     main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
