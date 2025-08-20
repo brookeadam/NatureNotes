@@ -55,10 +55,45 @@ def fetch_weather_data(lat, lon, start, end):
 def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
         # Updated to read from CSV with the correct encoding and to handle bad lines
-        return pd.read_csv(EBIRD_DATA_FILE, encoding='cp1252', on_bad_lines='skip')
+        df = pd.read_csv(EBIRD_DATA_FILE, encoding='cp1252', on_bad_lines='skip')
+        # Call the new cleaning function
+        cleaned_df = clean_ebird_data(df)
+        return cleaned_df
     else:
         st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
         return pd.DataFrame()
+
+@st.cache_data
+def clean_ebird_data(df):
+    """
+    Cleans the eBird data by grouping entries and taking the max count
+    for each unique observation to remove duplicate reports.
+    """
+    if df.empty:
+        return df
+    
+    # Standardize column names for processing
+    df_cleaned = df.rename(columns={
+        "COMMON NAME": "Species",
+        "SCIENTIFIC NAME": "Scientific Name",
+        "OBSERVATION COUNT": "Count",
+        "OBSERVATION DATE": "Date",
+        "TIME": "Time"
+    })
+    
+    # Convert date and count to proper types
+    df_cleaned["Count"] = pd.to_numeric(df_cleaned["Count"], errors='coerce').fillna(0).astype(int)
+    df_cleaned["Date"] = pd.to_datetime(df_cleaned["Date"])
+
+    # Group by key fields and aggregate the counts
+    # This ensures that for a single checklist, only the highest reported count is kept.
+    cleaned_df = df_cleaned.groupby(
+        ["Species", "Scientific Name", "Date", "Time"]
+    ).agg(
+        Count=('Count', 'max')
+    ).reset_index()
+
+    return cleaned_df
 
 # === HEADER ===
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
