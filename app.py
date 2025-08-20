@@ -197,25 +197,3 @@ if st.button("Compare Species and Weather"):
     col_b = f"Birds ({range2_start}–{range2_end})"
     comparison_df = pd.merge(table_a.rename(columns={"Count": col_a}),
                              table_b.rename(columns={"Count": col_b}),
-                             on=["Species", "Scientific Name"], how="outer").fillna(0)
-    comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
-
-    st.subheader("🐦 Species Comparison Table 🐦")
-    st.dataframe(comparison_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
-
-    # Weather comparison
-    st.subheader("🌡️ Weather Trends (Detailed) 🌡️")
-    # NEW CODE: Fetch weather data specifically for each comparison range
-    weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
-    weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
-
-    if not weather_range_a.empty:
-        st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
-        
-        # Create a copy to avoid a SettingWithCopyWarning
-        renamed_a = weather_range_a.copy()
-        
-        # Convert 'Date' column to YYYY-MM-DD string format
-        renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-        
-        renamed_a = renamed_a.
