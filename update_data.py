@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 
 # === Constants ===
 HEADWATERS_LOCATIONS = ["L1210588"]
-DATA_DIR = Path("data")
-DATA_FILE = DATA_DIR / "historical_checklists.csv"
+# The file is now in the main branch
+DATA_FILE = Path("historical_checklists.csv") 
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_new_data(loc_id, start_date):
@@ -29,15 +29,13 @@ def main():
     if not EBIRD_API_KEY:
         raise ValueError("EBIRD_API_KEY not found in environment variables.")
         
-    DATA_DIR.mkdir(exist_ok=True)
-    
     if DATA_FILE.exists():
         existing_df = pd.read_csv(DATA_FILE, encoding='latin-1', sep=';')
         last_obs_date = pd.to_datetime(existing_df['obsDt']).max().date()
         start_date = last_obs_date + timedelta(days=1)
         print(f"Existing data found. Updating from last observation date: {start_date}")
     else:
-        print("Historical data file not found. Please upload it as historical_checklists.csv.")
+        print("Historical data file not found. Please ensure it's in the main branch.")
         return # Exit if file is not present
         
     all_new_obs = []
@@ -59,4 +57,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
