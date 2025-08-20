@@ -6,20 +6,21 @@ from datetime import datetime, timedelta
 
 # === Constants ===
 HEADWATERS_LOCATIONS = ["L1210588"]
-# The file is now in the main branch
+# The file is in the main branch
 DATA_FILE = Path("historical_checklists.csv") 
 EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
-def fetch_new_data(loc_id, start_date):
+def fetch_new_data(loc_id, start_date, end_date):
     """Fetches new eBird data for a location from a specific start date to today."""
     
-    url = f"https://api.ebird.org/v2/data/obs/loc/{loc_id}/recent"
+    url = f"https://api.ebird.org/v2/data/obs/loc/{loc_id}/historic"
     headers = {"X-eBirdApiToken": EBIRD_API_KEY}
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
+        "endDate": end_date.strftime("%Y-%m-%d"),
     }
     
-    print(f"Fetching new data for location {loc_id} from {start_date} to today...")
+    print(f"Fetching new data for location {loc_id} from {start_date} to {end_date}...")
     
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
@@ -31,9 +32,11 @@ def main():
         
     if DATA_FILE.exists():
         existing_df = pd.read_csv(DATA_FILE, encoding='cp1252', on_bad_lines='skip')
-        print("Columns in your file:", existing_df.columns)
+        print("Columns in your file:", existing_df.columns.tolist())
+        # eBird dataset uses 'OBSERVATION DATE' for the date column
         last_obs_date = pd.to_datetime(existing_df['OBSERVATION DATE']).max().date()
         start_date = last_obs_date + timedelta(days=1)
+        end_date = datetime.now().date()
         print(f"Existing data found. Updating from last observation date: {start_date}")
     else:
         print("Historical data file not found. Please ensure it's in the main branch.")
@@ -43,13 +46,14 @@ def main():
     
     for loc_id in HEADWATERS_LOCATIONS:
         try:
-            new_data = fetch_new_data(loc_id, start_date)
+            new_data = fetch_new_data(loc_id, start_date, end_date)
             all_new_obs.extend(new_data)
         except requests.exceptions.HTTPError as e:
             print(f"Error fetching new data for location {loc_id}: {e}")
             
     if all_new_obs:
         new_df = pd.DataFrame(all_new_obs)
+        # The eBird API uses 'subId' as the unique identifier for a checklist
         combined_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=['subId']).reset_index(drop=True)
         combined_df.to_csv(DATA_FILE, index=False)
         print(f"Successfully updated data with {len(new_df)} new observations.")
