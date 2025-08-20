@@ -73,7 +73,7 @@ st.subheader("🔎 Recent eBird Sightings")
 st.subheader("⏱️ Filter by Date Range")
 quick_range = st.radio("Select Range", ["Custom Range"], index=1, key="main_range")
 
-else:
+if:
     main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
     main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
 
