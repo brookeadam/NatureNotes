@@ -23,6 +23,11 @@ def fetch_new_data(loc_id, start_date, end_date):
     print(f"Fetching new data for location {loc_id} from {start_date} to {end_date}...")
     
     response = requests.get(url, headers=headers, params=params)
+    
+    # Custom error handling to provide a clearer message for an invalid API key
+    if response.status_code == 403:
+        raise requests.exceptions.HTTPError("403 Forbidden: Invalid or expired API key. Please check your EBIRD_API_KEY secret.")
+    
     response.raise_for_status()
     return response.json()
 
