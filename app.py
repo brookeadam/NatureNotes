@@ -368,6 +368,54 @@ if not merged_df.empty:
             renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
             renamed_a = renamed_a.rename(columns={
                 "temp_max": "Max Temp °F",
+                "temp_min": "Min Temp °F",
+                "precipitation": "Total Precip in"
+            })
+            st.dataframe(
+                renamed_a.style.set_properties(**{'text-align': 'left'}).format(
+                    {
+                        'Max Temp °F': '{:.2f}',
+                        'Min Temp °F': '{:.2f}',
+                        'Total Precip in': '{:.4f}'
+                    }
+                ),
+                use_container_width=True
+            )
+        else:
+            st.info(f"No weather data available for Checklist A ({selected_checklist_a}).")
+            
+        if not weather_b.empty:
+            max_temp_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
+            min_temp_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
+            max_temp_b = max_temp_row_b["temp_max"]
+            max_temp_date_b = max_temp_row_b["Date"].strftime("%Y-%m-%d")
+            min_temp_b = min_temp_row_b["temp_min"]
+            min_temp_date_b = min_temp_row_b["Date"].strftime("%Y-%m-%d")
+            total_precip_b = weather_b['precipitation'].sum()
+            st.write(f"**Weather Summary: Checklist B ({selected_checklist_b}):** Max Temp: {max_temp_b:.2f}°F on {max_temp_date_b}, Min Temp: {min_temp_b:.2f}°F on {min_temp_date_b}, Total Precip: {total_precip_b:.4f} in")
+            
+            # Format and display the weather data table
+            renamed_b = weather_b.copy()
+            renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
+            renamed_b = renamed_b.rename(columns={
+                "temp_max": "Max Temp °F",
+                "temp_min": "Min Temp °F",
+                "precipitation": "Total Precip in"
+            })
+            st.dataframe(
+                renamed_b.style.set_properties(**{'text-align': 'left'}).format(
+                    {
+                        'Max Temp °F': '{:.2f}',
+                        'Min Temp °F': '{:.2f}',
+                        'Total Precip in': '{:.4f}'
+                    }
+                ),
+                use_container_width=True
+            )
+        else:
+            st.info(f"No weather data available for Checklist B ({selected_checklist_b}).")
+else:
+    st.info("Ebird data is not available to create a checklist comparison.")
     
 # === Footer ===
 st.markdown("---")
