@@ -174,5 +174,5 @@ if st.button("Compare Species and Weather"):
         (merged_df["Date"] >= pd.to_datetime(range1_start)) &
         (merged_df["Date"] <= pd.to_datetime(range1_end))
     ]
-    range_b_birds = merged_df[
+    range_b_birds = merged_df[]
         (merged_df["Date"] >=)
