@@ -227,7 +227,14 @@ if st.button("Compare Species and Weather"):
     weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
 
     if not weather_range_a.empty:
-        st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end})**")
+        max_temp_row_a = weather_range_a.loc[weather_range_a["temp_max"].idxmax()]
+        min_temp_row_a = weather_range_a.loc[weather_range_a["temp_min"].idxmin()]
+        max_temp_a = max_temp_row_a["temp_max"]
+        max_temp_date_a = max_temp_row_a["Date"].strftime("%Y-%m-%d")
+        min_temp_a = min_temp_row_a["temp_min"]
+        min_temp_date_a = min_temp_row_a["Date"].strftime("%Y-%m-%d")
+        total_precip_a = weather_range_a['precipitation'].sum()
+        st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end}):** Max Temp: {max_temp_a:.2f}°F on {max_temp_date_a}, Min Temp: {min_temp_a:.2f}°F on {min_temp_date_a}, Total Precip: {total_precip_a:.4f} in")
         
         # Create a copy to avoid a SettingWithCopyWarning
         renamed_a = weather_range_a.copy()
@@ -254,7 +261,14 @@ if st.button("Compare Species and Weather"):
         st.info("No weather data for Range A.")
 
     if not weather_range_b.empty:
-        st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end})**")
+        max_temp_row_b = weather_range_b.loc[weather_range_b["temp_max"].idxmax()]
+        min_temp_row_b = weather_range_b.loc[weather_range_b["temp_min"].idxmin()]
+        max_temp_b = max_temp_row_b["temp_max"]
+        max_temp_date_b = max_temp_row_b["Date"].strftime("%Y-%m-%d")
+        min_temp_b = min_temp_row_b["temp_min"]
+        min_temp_date_b = min_temp_row_b["Date"].strftime("%Y-%m-%d")
+        total_precip_b = weather_range_b['precipitation'].sum()
+        st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end}):** Max Temp: {max_temp_b:.2f}°F on {max_temp_date_b}, Min Temp: {min_temp_b:.2f}°F on {min_temp_date_b}, Total Precip: {total_precip_b:.4f} in")
         
         # Create a copy to avoid a SettingWithCopyWarning
         renamed_b = weather_range_b.copy()
@@ -279,7 +293,7 @@ if st.button("Compare Species and Weather"):
         )
     else:
         st.info("No weather data for Range B.")
-    
+        
 # === Footer ===
 st.markdown("---")
 st.markdown(
