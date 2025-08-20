@@ -73,4 +73,29 @@ st.subheader("🔎 Recent eBird Sightings 🔎")
 st.subheader("⏱️ Filter by Date Range ⏱️")
 
 main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
-main_end_date = st.date_input("End Date", key="main_end", min
+main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
+
+# === Load Data from File ===
+weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
+ebird_df = load_ebird_data_from_file()
+
+# === Data Cleaning & Preprocessing ===
+if not ebird_df.empty:
+    # Renamed to match the CSV column headers
+    merged_df = ebird_df.rename(columns={
+        "COMMON NAME": "Species",
+        "SCIENTIFIC NAME": "Scientific Name",
+        "OBSERVATION COUNT": "Count",
+        "OBSERVATION DATE": "Date"
+    })
+    # Convert 'Count' column to numeric, replacing errors with NaN
+    merged_df["Count"] = pd.to_numeric(merged_df["Count"], errors='coerce').fillna(0).astype(int)
+    merged_df["Date"] = pd.to_datetime(merged_df["Date"])
+else:
+    merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
+
+# === Display Recent eBird Sightings ===
+if not merged_df.empty:
+    # Filter ebird_df for the date range selected by the user
+    filtered_ebird_df = merged_df[(merged_df["Date"] >= pd.to_datetime(main_start_date)) &
+                                 (merged_df["Date"] <= pd
