@@ -1,4 +1,4 @@
-import streamlit as st
+erimport streamlit as st
 import pandas as pd
 import requests
 import altair as alt
@@ -70,7 +70,7 @@ MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings 🔎")
-st.markdown("<h3 style='text-align: center;'>⏱️ Filter by Date Range ⏱️</h3>", unsafe_allow_html=True)
+st.subheader("⏱️ Filter by Date Range ⏱️")
 # You can remove the quick_range radio if you only want Custom Range, but if you want to keep the label, this is how you would do it.
 quick_range = st.radio("Select Range", ["Custom Range"], index=0, key="main_range")
 
@@ -119,7 +119,7 @@ else:
     st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
 
 # === Weather Metrics ===
-st.markdown("<h3 style='text-align: center;'>🌡️ Weather Metrics 🌡️</h3>", unsafe_allow_html=True)
+st.markdown("🌡️ Weather Metrics 🌡️")
 weather_filtered = weather_df.copy()
 weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
 weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
@@ -157,7 +157,7 @@ else:
     st.warning("No weather data available for the selected date range.")
     
 # === Species Count Comparison ==
-st.markdown("<h3 style='text-align: center;'>📊 Species Comparison by Date Range 📊</h3>", unsafe_allow_html=True)
+st.markdown("📊 Species Comparison by Date Range 📊")
 
 col1, col2 = st.columns(2)
 with col1:
