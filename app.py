@@ -61,7 +61,7 @@ def load_ebird_data_from_file():
         return pd.DataFrame()
 
 # === HEADER ===
-st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated biweekly.</h4>", unsafe_allow_html=True)
 
 # Define the minimum and maximum dates for filtering
@@ -69,8 +69,8 @@ MIN_DATE = datetime.date(1985, 1, 1)
 MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
-st.subheader("🔎 Recent eBird Sightings")
-st.subheader("⏱️ Filter by Date Range")
+st.subheader("🔎 Recent eBird Sightings 🔎")
+st.subheader("⏱️ Filter by Date Range ⏱️")
 # You can remove the quick_range radio if you only want Custom Range, but if you want to keep the label, this is how you would do it.
 quick_range = st.radio("Select Range", ["Custom Range"], index=0, key="main_range")
 
@@ -157,7 +157,7 @@ else:
     st.warning("No weather data available for the selected date range.")
     
 # === Species Count Comparison ==
-st.markdown("<h3 style='text-align: center;'>📊 Species Comparison by Date Range</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>📊 Species Comparison by Date Range 📊</h3>", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -185,7 +185,7 @@ if st.button("Compare Species and Weather"):
     total_birds_a = range_a_birds["Count"].sum()
     total_birds_b = range_b_birds["Count"].sum()
 
-    st.markdown("<h4 style='text-align: center;'>🔢 Bird Summary</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center;'>🔢 Bird Summary 🔢</h4>", unsafe_allow_html=True)
     st.write(f"**Range A ({range1_start}–{range1_end}):** {unique_species_a} unique species, {total_birds_a} total birds")
     st.write(f"**Range B ({range2_start}–{range2_end}):** {unique_species_b} unique species, {total_birds_b} total birds")
     
@@ -200,11 +200,11 @@ if st.button("Compare Species and Weather"):
                              on=["Species", "Scientific Name"], how="outer").fillna(0)
     comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
 
-    st.markdown("<h4 style='text-align: center;'>🐦 Species Comparison Table</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center;'>🐦 Species Comparison Table 🐦</h4>", unsafe_allow_html=True)
     st.dataframe(comparison_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
 
     # Weather comparison
-    st.markdown("<h4 style='text-align: center;'>🌡️ Weather Trends (Detailed)</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center;'>🌡️ Weather Trends (Detailed) 🌡️</h4>", unsafe_allow_html=True)
     # NEW CODE: Fetch weather data specifically for each comparison range
     weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
     weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
