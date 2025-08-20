@@ -69,9 +69,8 @@ MIN_DATE = datetime.date(1985, 1, 1)
 MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
-st.markdown("🔎 Recent eBird Sightings 🔎")
-st.markdown("⏱️ Filter by Date Range ⏱️")
-quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=2, key="main_range")
+st.subheader("🔎 Recent eBird Sightings 🔎")
+st.subheader("⏱️ Filter by Date Range ⏱️")
 
 main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
 main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
@@ -120,7 +119,7 @@ else:
     st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
 
 # === Weather Metrics ===
-st.markdown("🌡️ Weather Metrics 🌡️")
+st.subheader("🌡️ Weather Metrics 🌡️")
 weather_filtered = weather_df.copy()
 weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
 weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
@@ -138,7 +137,7 @@ if not weather_filtered.empty:
         min_temp_date = min_temp_row["Date"]
         st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
         
-    st.markdown("<h4 style='text-align: center;'>Daily Weather Data</h4>", unsafe_allow_html=True)
+    st.subheader("Daily Weather Data")
     # Create a copy of the dataframe for display to avoid SettingWithCopyWarning
     display_weather_df = weather_filtered.copy()
     
@@ -152,13 +151,13 @@ if not weather_filtered.empty:
         "precipitation": "Total Precip in"
     })
     
-    # Add index=False to hide the index column
-    st.dataframe(display_weather_df, use_container_width=True)
+    # Add index=False to hide the index column and apply left-alignment
+    st.dataframe(display_weather_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
 else:
     st.warning("No weather data available for the selected date range.")
     
 # === Species Count Comparison ==
-st.markdown("📊 Species Comparison by Date Range 📊")
+st.subheader("📊 Species Comparison by Date Range 📊")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -186,7 +185,7 @@ if st.button("Compare Species and Weather"):
     total_birds_a = range_a_birds["Count"].sum()
     total_birds_b = range_b_birds["Count"].sum()
 
-    st.markdown("🔢 Bird Summary 🔢")
+    st.subheader("🔢 Bird Summary 🔢")
     st.write(f"**Range A ({range1_start}–{range1_end}):** {unique_species_a} unique species, {total_birds_a} total birds")
     st.write(f"**Range B ({range2_start}–{range2_end}):** {unique_species_b} unique species, {total_birds_b} total birds")
     
@@ -201,11 +200,11 @@ if st.button("Compare Species and Weather"):
                              on=["Species", "Scientific Name"], how="outer").fillna(0)
     comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
 
-    st.markdown("🐦 Species Comparison Table 🐦")
+    st.subheader("🐦 Species Comparison Table 🐦")
     st.dataframe(comparison_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
 
     # Weather comparison
-    st.markdown("🌡️ Weather Trends (Detailed) 🌡️")
+    st.subheader("🌡️ Weather Trends (Detailed) 🌡️")
     # NEW CODE: Fetch weather data specifically for each comparison range
     weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
     weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
@@ -224,7 +223,7 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_a, use_container_width=True)
+        st.dataframe(renamed_a.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
     else:
         st.info("No weather data for Range A.")
 
@@ -242,7 +241,7 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_b, use_container_width=True)
+        st.dataframe(renamed_b.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
     else:
         st.info("No weather data for Range B.")
     
