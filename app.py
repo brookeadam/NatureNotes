@@ -70,7 +70,7 @@ MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
 st.markdown("🔎 Recent eBird Sightings 🔎")
-st.markdown("⏱️ Filter by Date Range ⏱️"e)
+st.markdown("⏱️ Filter by Date Range ⏱️")
 quick_range = st.radio("Select Range", ["Last 7 Days", "This Month", "Custom Range"], index=2, key="main_range")
 
 main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
