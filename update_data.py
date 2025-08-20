@@ -30,7 +30,7 @@ def main():
         raise ValueError("EBIRD_API_KEY not found in environment variables.")
         
     if DATA_FILE.exists():
-        existing_df = pd.read_csv(DATA_FILE, encoding='latin-1', sep='\t')
+        existing_df = pd.read_csv(DATA_FILE, on_bad_lines='skip')
         print("Columns in your file:", existing_df.columns)
         last_obs_date = pd.to_datetime(existing_df['OBSERVATION DATE']).max().date()
         start_date = last_obs_date + timedelta(days=1)
