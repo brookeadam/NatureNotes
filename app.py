@@ -11,7 +11,8 @@ HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 LATITUDE = 29.4689
 LONGITUDE = -98.4798
 DATA_DIR = Path("data")
-EBIRD_DATA_FILE = DATA_DIR / "ebird_data.parquet"
+# Updated to use the CSV file
+EBIRD_DATA_FILE = Path("historical_checklists.csv")
 
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
@@ -53,7 +54,8 @@ def fetch_weather_data(lat, lon, start, end):
 @st.cache_data
 def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
-        return pd.read_parquet(EBIRD_DATA_FILE)
+        # Updated to read from CSV with the correct encoding and to handle bad lines
+        return pd.read_csv(EBIRD_DATA_FILE, encoding='cp1252', on_bad_lines='skip')
     else:
         st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
         return pd.DataFrame()
@@ -84,31 +86,32 @@ ebird_df = load_ebird_data_from_file()
 
 # === Data Cleaning & Preprocessing ===
 if not ebird_df.empty:
-    ebird_df["obsDt"] = pd.to_datetime(ebird_df["obsDt"])
+    # Renamed to match the CSV column headers
     merged_df = ebird_df.rename(columns={
-        "comName": "Species",
-        "sciName": "Scientific Name",
-        "howMany": "Count",
-        "obsDt": "Date"
+        "COMMON NAME": "Species",
+        "SCIENTIFIC NAME": "Scientific Name",
+        "OBSERVATION COUNT": "Count",
+        "OBSERVATION DATE": "Date"
     })
+    merged_df["Date"] = pd.to_datetime(merged_df["Date"])
 else:
     merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 # === Display Recent eBird Sightings ===
-if not ebird_df.empty:
+if not merged_df.empty:
     # Filter ebird_df for the date range selected by the user
-    filtered_ebird_df = ebird_df[(ebird_df["obsDt"] >= pd.to_datetime(main_start_date)) & 
-                                 (ebird_df["obsDt"] <= pd.to_datetime(main_end_date))]
+    filtered_ebird_df = merged_df[(merged_df["Date"] >= pd.to_datetime(main_start_date)) &
+                                 (merged_df["Date"] <= pd.to_datetime(main_end_date))]
     
     if not filtered_ebird_df.empty:
-        filtered_ebird_df = filtered_ebird_df.sort_values("obsDt", ascending=False).copy()
-        filtered_ebird_df["obsDt"] = filtered_ebird_df["obsDt"].dt.strftime("%Y-%m-%d")
+        filtered_ebird_df = filtered_ebird_df.sort_values("Date", ascending=False).copy()
+        filtered_ebird_df["Date"] = filtered_ebird_df["Date"].dt.strftime("%Y-%m-%d")
         
-        table_df = filtered_ebird_df[["comName", "sciName", "howMany", "obsDt"]].rename(columns={
-            "comName": "COMMON NAME",
-            "sciName": "SCIENTIFIC NAME",
-            "howMany": "OBSERVATION COUNT",
-            "obsDt": "OBSERVATION DATE",
+        table_df = filtered_ebird_df[["Species", "Scientific Name", "Count", "Date"]].rename(columns={
+            "Species": "COMMON NAME",
+            "Scientific Name": "SCIENTIFIC NAME",
+            "Count": "OBSERVATION COUNT",
+            "Date": "OBSERVATION DATE",
         })
         
         styled_table = table_df.style.set_properties(**{'text-align': 'left'})
@@ -169,7 +172,7 @@ with col2:
 
 if st.button("Compare Species and Weather"):
     # Filter bird data
-    # This filters the complete 'merged_df' loaded from the .parquet file
+    # This filters the complete 'merged_df' loaded from the .csv file
     range_a_birds = merged_df[
         (merged_df["Date"] >= pd.to_datetime(range1_start)) &
         (merged_df["Date"] <= pd.to_datetime(range1_end))
@@ -195,8 +198,8 @@ if st.button("Compare Species and Weather"):
 
     col_a = f"Birds ({range1_start}–{range1_end})"
     col_b = f"Birds ({range2_start}–{range2_end})"
-    comparison_df = pd.merge(table_a.rename(columns={"Count": col_a}), 
-                             table_b.rename(columns={"Count": col_b}), 
+    comparison_df = pd.merge(table_a.rename(columns={"Count": col_a}),
+                             table_b.rename(columns={"Count": col_b}),
                              on=["Species", "Scientific Name"], how="outer").fillna(0)
     comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
 
@@ -217,39 +220,3 @@ if st.button("Compare Species and Weather"):
         
         # Convert 'Date' column to YYYY-MM-DD string format
         renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-        
-        renamed_a = renamed_a.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(renamed_a, use_container_width=True)
-    else:
-        st.info("No weather data for Range A.")
-
-    if not weather_range_b.empty:
-        st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end})**")
-        
-        # Create a copy to avoid a SettingWithCopyWarning
-        renamed_b = weather_range_b.copy()
-        
-        # Convert 'Date' column to YYYY-MM-DD string format
-        renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
-        
-        renamed_b = renamed_b.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(renamed_b, use_container_width=True)
-    else:
-        st.info("No weather data for Range B.")
-    
-# === Footer ===
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: gray;'>"
-    "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
-    "</div>",
-    unsafe_allow_html=True
-)
