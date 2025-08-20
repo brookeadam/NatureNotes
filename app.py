@@ -72,13 +72,13 @@ def clean_ebird_data(df):
     if df.empty:
         return df
     
-    # Standardize column names for processing
+    # Standardize column names for processing, including the correct time column
     df_cleaned = df.rename(columns={
         "COMMON NAME": "Species",
         "SCIENTIFIC NAME": "Scientific Name",
         "OBSERVATION COUNT": "Count",
         "OBSERVATION DATE": "Date",
-        "TIME": "Time"
+        "TIME OBSERVATIONS STARTED": "Time"
     })
     
     # Convert date and count to proper types
@@ -86,7 +86,6 @@ def clean_ebird_data(df):
     df_cleaned["Date"] = pd.to_datetime(df_cleaned["Date"])
 
     # Group by key fields and aggregate the counts
-    # This ensures that for a single checklist, only the highest reported count is kept.
     cleaned_df = df_cleaned.groupby(
         ["Species", "Scientific Name", "Date", "Time"]
     ).agg(
@@ -94,7 +93,7 @@ def clean_ebird_data(df):
     ).reset_index()
 
     return cleaned_df
-
+    
 # === HEADER ===
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated biweekly.</h4>", unsafe_allow_html=True)
