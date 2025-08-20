@@ -130,12 +130,12 @@ if not weather_filtered.empty:
         max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
         max_temp = max_temp_row["temp_max"]
         max_temp_date = max_temp_row["Date"]
-        st.metric(label=f"Max Temp (F) on {max_temp_date.date()}", value=f"{max_temp:.1f}")
+        st.metric(label=f"Max Temp (F) on {max_temp_date.date()}", value=f"{max_temp:.2f}")
     with col2:
         min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
         min_temp = min_temp_row["temp_min"]
         min_temp_date = min_temp_row["Date"]
-        st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.1f}")
+        st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.2f}")
         
     st.subheader("Daily Weather Data")
     # Create a copy of the dataframe for display to avoid SettingWithCopyWarning
@@ -151,8 +151,17 @@ if not weather_filtered.empty:
         "precipitation": "Total Precip in"
     })
     
-    # Add index=False to hide the index column and apply left-alignment
-    st.dataframe(display_weather_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
+    # Add index=False to hide the index column and apply left-alignment and formatting
+    st.dataframe(
+        display_weather_df.style.set_properties(**{'text-align': 'left'}).format(
+            {
+                'Max Temp °F': '{:.2f}',
+                'Min Temp °F': '{:.2f}',
+                'Total Precip in': '{:.4f}'
+            }
+        ),
+        use_container_width=True
+    )
 else:
     st.warning("No weather data available for the selected date range.")
     
@@ -223,7 +232,16 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_a.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
+        st.dataframe(
+            renamed_a.style.set_properties(**{'text-align': 'left'}).format(
+                {
+                    'Max Temp °F': '{:.2f}',
+                    'Min Temp °F': '{:.2f}',
+                    'Total Precip in': '{:.4f}'
+                }
+            ),
+            use_container_width=True
+        )
     else:
         st.info("No weather data for Range A.")
 
@@ -241,7 +259,16 @@ if st.button("Compare Species and Weather"):
             "temp_min": "Min Temp °F",
             "precipitation": "Total Precip in"
         })
-        st.dataframe(renamed_b.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
+        st.dataframe(
+            renamed_b.style.set_properties(**{'text-align': 'left'}).format(
+                {
+                    'Max Temp °F': '{:.2f}',
+                    'Min Temp °F': '{:.2f}',
+                    'Total Precip in': '{:.4f}'
+                }
+            ),
+            use_container_width=True
+        )
     else:
         st.info("No weather data for Range B.")
     
