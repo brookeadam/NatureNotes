@@ -69,7 +69,7 @@ MIN_DATE = datetime.date(1985, 1, 1)
 MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
-st.subheader("<h3 style='text-align: center;'>🔎 Recent eBird Sightings 🔎</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>🔎 Recent eBird Sightings 🔎</h3>", unsafe_allow_html=True)
 st.subheader("⏱️ Filter by Date Range ⏱️")
 # You can remove the quick_range radio if you only want Custom Range, but if you want to keep the label, this is how you would do it.
 quick_range = st.radio("Select Range", ["Custom Range"], index=0, key="main_range")
