@@ -71,11 +71,11 @@ MAX_DATE = datetime.date(2035, 12, 31)
 # === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings")
 st.subheader("⏱️ Filter by Date Range")
-quick_range = st.radio("Select Range", ["Custom Range"], index=1, key="main_range")
+# You can remove the quick_range radio if you only want Custom Range, but if you want to keep the label, this is how you would do it.
+quick_range = st.radio("Select Range", ["Custom Range"], index=0, key="main_range")
 
-if:
-    main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
-    main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
+main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
+main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
 
 # === Load Data from File ===
 weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
