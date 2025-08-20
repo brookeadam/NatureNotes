@@ -198,7 +198,7 @@ if st.button("Compare Species and Weather"):
     st.write(f"**Range A ({range1_start}–{range1_end}):** {unique_species_a} unique species, {total_birds_a} total birds")
     st.write(f"**Range B ({range2_start}–{range2_end}):** {unique_species_b} unique species, {total_birds_b} total birds")
     
-    # Species comparison table
+   # Species comparison table
     table_a = range_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
     table_b = range_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
 
@@ -210,8 +210,16 @@ if st.button("Compare Species and Weather"):
     comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
 
     st.subheader("🐦 Species Comparison Table 🐦")
-    st.dataframe(comparison_df.style.set_properties(**{'text-align': 'left'}), use_container_width=True)
-
+    st.dataframe(
+        comparison_df.style.set_properties(**{'text-align': 'left'}).format(
+            {
+                col_a: '{:.0f}',
+                col_b: '{:.0f}',
+                'Difference': '{:.0f}'
+            }
+        ),
+        use_container_width=True
+    )
     # Weather comparison
     st.subheader("🌡️ Weather Trends (Detailed) 🌡️")
     # NEW CODE: Fetch weather data specifically for each comparison range
