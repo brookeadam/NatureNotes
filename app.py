@@ -293,7 +293,90 @@ if st.button("Compare Species and Weather"):
         )
     else:
         st.info("No weather data for Range B.")
+
+# === New section for Checklist Comparison ===
+st.markdown("---")
+st.subheader("📝 Compare Specific Checklists 📝")
+
+if not merged_df.empty:
+    unique_dates = sorted(merged_df["Date"].unique(), reverse=True)
+    formatted_dates = [d.strftime("%Y-%m-%d") for d in unique_dates]
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_checklist_a = st.selectbox(
+            "Select Checklist A",
+            options=formatted_dates,
+            key="checklist_a"
+        )
+    with col2:
+        selected_checklist_b = st.selectbox(
+            "Select Checklist B",
+            options=formatted_dates,
+            key="checklist_b"
+        )
+
+    if st.button("Compare Checklists"):
+        date_a = pd.to_datetime(selected_checklist_a)
+        date_b = pd.to_datetime(selected_checklist_b)
         
+        # Get data for selected checklists
+        checklist_a_birds = merged_df[merged_df["Date"] == date_a]
+        checklist_b_birds = merged_df[merged_df["Date"] == date_b]
+        
+        # Species Comparison
+        st.subheader("🐦 Species Comparison 🐦")
+        table_a = checklist_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
+        table_b = checklist_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
+        
+        col_a_name = f"Birds ({selected_checklist_a})"
+        col_b_name = f"Birds ({selected_checklist_b})"
+        
+        comparison_df_checklist = pd.merge(table_a.rename(columns={"Count": col_a_name}),
+                                         table_b.rename(columns={"Count": col_b_name}),
+                                         on=["Species", "Scientific Name"], how="outer").fillna(0)
+        comparison_df_checklist["Difference"] = comparison_df_checklist[col_b_name] - comparison_df_checklist[col_a_name]
+
+        st.dataframe(
+            comparison_df_checklist.style.set_properties(**{'text-align': 'left'}).format(
+                {
+                    col_a_name: '{:.0f}',
+                    col_b_name: '{:.0f}',
+                    'Difference': '{:.0f}'
+                }
+            ),
+            use_container_width=True
+        )
+        
+        # Weather Comparison
+        st.subheader("🌡️ Weather Comparison 🌡️")
+        weather_a = fetch_weather_data(LATITUDE, LONGITUDE, date_a.date(), date_a.date())
+        weather_b = fetch_weather_data(LATITUDE, LONGITUDE, date_b.date(), date_b.date())
+        
+        if not weather_a.empty and not weather_b.empty:
+            weather_summary = pd.DataFrame({
+                "Date": [selected_checklist_a, selected_checklist_b],
+                "Max Temp °F": [weather_a["temp_max"].iloc[0], weather_b["temp_max"].iloc[0]],
+                "Min Temp °F": [weather_a["temp_min"].iloc[0], weather_b["temp_min"].iloc[0]],
+                "Total Precip in": [weather_a["precipitation"].iloc[0], weather_b["precipitation"].iloc[0]]
+            })
+
+            st.dataframe(
+                weather_summary.style.set_properties(**{'text-align': 'left'}).format(
+                    {
+                        'Max Temp °F': '{:.2f}',
+                        'Min Temp °F': '{:.2f}',
+                        'Total Precip in': '{:.4f}'
+                    }
+                ),
+                use_container_width=True
+            )
+        else:
+            st.info("No weather data available for one or both of the selected dates.")
+            
+else:
+    st.info("Ebird data is not available to create a checklist comparison.")
+    
 # === Footer ===
 st.markdown("---")
 st.markdown(
