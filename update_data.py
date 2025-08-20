@@ -8,13 +8,20 @@ from datetime import datetime, timedelta
 HEADWATERS_LOCATIONS = ["L1210588"]
 # The file is in the main branch
 DATA_FILE = Path("historical_checklists.csv") 
-EBIRD_API_KEY = os.environ.get("EBIRD_API_KEY")
 
 def fetch_new_data(loc_id, start_date, end_date):
-    """Fetches new eBird data for a location from a specific start date to today."""
+    """
+    Fetches new eBird data for a location.
+    NOTE: This function requires an eBird API key.
+    If an API key is not provided, this function will not run.
+    """
+    ebird_api_key = os.environ.get("EBIRD_API_KEY")
+    if not ebird_api_key:
+        print("Warning: EBIRD_API_KEY is not set. Skipping API data fetch.")
+        return []
     
     url = f"https://api.ebird.org/v2/data/obs/loc/{loc_id}/historic"
-    headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+    headers = {"X-eBirdApiToken": ebird_api_key}
     params = {
         "startDate": start_date.strftime("%Y-%m-%d"),
         "endDate": end_date.strftime("%Y-%m-%d"),
@@ -24,7 +31,6 @@ def fetch_new_data(loc_id, start_date, end_date):
     
     response = requests.get(url, headers=headers, params=params)
     
-    # Custom error handling to provide a clearer message for an invalid API key
     if response.status_code == 403:
         raise requests.exceptions.HTTPError("403 Forbidden: Invalid or expired API key. Please check your EBIRD_API_KEY secret.")
     
@@ -32,20 +38,17 @@ def fetch_new_data(loc_id, start_date, end_date):
     return response.json()
 
 def main():
-    if not EBIRD_API_KEY:
-        raise ValueError("EBIRD_API_KEY not found in environment variables.")
+    if not DATA_FILE.exists():
+        print("Historical data file not found. Please ensure historical_checklists.csv is in the main branch.")
+        return 
         
-    if DATA_FILE.exists():
-        existing_df = pd.read_csv(DATA_FILE, encoding='cp1252', on_bad_lines='skip')
-        print("Columns in your file:", existing_df.columns.tolist())
-        # eBird dataset uses 'OBSERVATION DATE' for the date column
-        last_obs_date = pd.to_datetime(existing_df['OBSERVATION DATE']).max().date()
-        start_date = last_obs_date + timedelta(days=1)
-        end_date = datetime.now().date()
-        print(f"Existing data found. Updating from last observation date: {start_date}")
-    else:
-        print("Historical data file not found. Please ensure it's in the main branch.")
-        return # Exit if file is not present
+    existing_df = pd.read_csv(DATA_FILE, encoding='cp1252', on_bad_lines='skip')
+    print("Columns in your file:", existing_df.columns.tolist())
+    
+    last_obs_date = pd.to_datetime(existing_df['OBSERVATION DATE']).max().date()
+    start_date = last_obs_date + timedelta(days=1)
+    end_date = datetime.now().date()
+    print(f"Existing data found. Updating from last observation date: {start_date}")
         
     all_new_obs = []
     
@@ -58,8 +61,7 @@ def main():
             
     if all_new_obs:
         new_df = pd.DataFrame(all_new_obs)
-        # The eBird API uses 'subId' as the unique identifier for a checklist
-        combined_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=['subId']).reset_index(drop=True)
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True).drop_duplicates(subset=['subId']).reset_index(drop=True)
         combined_df.to_csv(DATA_FILE, index=False)
         print(f"Successfully updated data with {len(new_df)} new observations.")
     else:
