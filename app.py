@@ -62,7 +62,7 @@ def load_ebird_data_from_file():
 
 # === HEADER ===
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated biweekly.</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated monthly.</h4>", unsafe_allow_html=True)
 
 # Define the minimum and maximum dates for filtering
 MIN_DATE = datetime.date(1985, 1, 1)
@@ -70,7 +70,7 @@ MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
 st.markdown("<h3 style='text-align: center;'>🔎 Recent eBird Sightings 🔎</h3>", unsafe_allow_html=True)
-st.subheader("⏱️ Filter by Date Range ⏱️")
+st.markdown("<h3 style='text-align: center;'>⏱️ Filter by Date Range ⏱️</h3>", unsafe_allow_html=True)
 # You can remove the quick_range radio if you only want Custom Range, but if you want to keep the label, this is how you would do it.
 quick_range = st.radio("Select Range", ["Custom Range"], index=0, key="main_range")
 
