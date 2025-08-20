@@ -353,29 +353,21 @@ if not merged_df.empty:
         weather_a = fetch_weather_data(LATITUDE, LONGITUDE, date_a.date(), date_a.date())
         weather_b = fetch_weather_data(LATITUDE, LONGITUDE, date_b.date(), date_b.date())
         
-        if not weather_a.empty and not weather_b.empty:
-            weather_summary = pd.DataFrame({
-                "Date": [selected_checklist_a, selected_checklist_b],
-                "Max Temp °F": [weather_a["temp_max"].iloc[0], weather_b["temp_max"].iloc[0]],
-                "Min Temp °F": [weather_a["temp_min"].iloc[0], weather_b["temp_min"].iloc[0]],
-                "Total Precip in": [weather_a["precipitation"].iloc[0], weather_b["precipitation"].iloc[0]]
-            })
-
-            st.dataframe(
-                weather_summary.style.set_properties(**{'text-align': 'left'}).format(
-                    {
-                        'Max Temp °F': '{:.2f}',
-                        'Min Temp °F': '{:.2f}',
-                        'Total Precip in': '{:.4f}'
-                    }
-                ),
-                use_container_width=True
-            )
-        else:
-            st.info("No weather data available for one or both of the selected dates.")
+        if not weather_a.empty:
+            max_temp_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
+            min_temp_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
+            max_temp_a = max_temp_row_a["temp_max"]
+            max_temp_date_a = max_temp_row_a["Date"].strftime("%Y-%m-%d")
+            min_temp_a = min_temp_row_a["temp_min"]
+            min_temp_date_a = min_temp_row_a["Date"].strftime("%Y-%m-%d")
+            total_precip_a = weather_a['precipitation'].sum()
+            st.write(f"**Weather Summary: Checklist A ({selected_checklist_a}):** Max Temp: {max_temp_a:.2f}°F on {max_temp_date_a}, Min Temp: {min_temp_a:.2f}°F on {min_temp_date_a}, Total Precip: {total_precip_a:.4f} in")
             
-else:
-    st.info("Ebird data is not available to create a checklist comparison.")
+            # Format and display the weather data table
+            renamed_a = weather_a.copy()
+            renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
+            renamed_a = renamed_a.rename(columns={
+                "temp_max": "Max Temp °F",
     
 # === Footer ===
 st.markdown("---")
