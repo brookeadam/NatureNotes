@@ -132,15 +132,16 @@ if not merged_df.empty:
         ).copy()
         
         st.dataframe(
-            latest_checklist_table[["Species", "Scientific Name", "Count"]].rename(
-                columns={
-                    "Species": "COMMON NAME",
-                    "Scientific Name": "SCIENTIFIC NAME",
-                    "Count": "OBSERVATION COUNT"
-                }
-            ).style.set_properties(**{'text-align': 'left'}),
-            use_container_width=True
-        )
+    display_weather_df.style.set_properties(**{'text-align': 'left'}).format(
+        {
+            'Max Temp °F': '{:.2f}',
+            'Min Temp °F': '{:.2f}',
+            'Total Precip in': '{:.4f}'
+        }
+    ),
+    use_container_width=True,
+    hide_index=True
+)
 
         # Find and display the weather metrics for the latest checklist date
         weather_df = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
