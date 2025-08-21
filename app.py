@@ -104,6 +104,60 @@ MAX_DATE = datetime.date(2035, 12, 31)
 
 # === Date Range Selection (Single, for main display) ===
 st.subheader("🔎 Recent eBird Sightings 🔎")
+# === Latest Checklist Section ===
+
+if not merged_df.empty:
+    # Find the most recent date in the eBird data
+    latest_date = merged_df["Date"].max()
+    
+    # Filter the eBird data for the latest checklist date
+    latest_checklist_df = merged_df[merged_df["Date"] == latest_date].copy()
+    
+    if not latest_checklist_df.empty:
+        # Prepare the checklist table
+        latest_checklist_table = latest_checklist_df.sort_values(
+            "Count", ascending=False
+        ).copy()
+        latest_checklist_table["Date"] = latest_checklist_table["Date"].dt.strftime("%Y-%m-%d")
+        
+        # Display the table of species from the latest checklist
+        st.dataframe(
+            latest_checklist_table.rename(
+                columns={
+                    "Species": "COMMON NAME",
+                    "Scientific Name": "SCIENTIFIC NAME",
+                    "Count": "OBSERVATION COUNT",
+                    "Date": "OBSERVATION DATE",
+                }
+            ).style.set_properties(**{'text-align': 'left'}),
+            use_container_width=True
+        )
+
+        # Find and display the weather metrics for the latest checklist date
+        latest_weather_df = weather_filtered[weather_filtered["Date"] == latest_date]
+
+        if not latest_weather_df.empty:
+            st.subheader(f"Weather for {latest_date.date()}")
+            
+            # Format and display the weather data
+            display_latest_weather_df = latest_weather_df.copy()
+            display_latest_weather_df["Date"] = display_latest_weather_df["Date"].dt.strftime("%Y-%m-%d")
+            
+            display_latest_weather_df = display_latest_weather_df.rename(columns={
+                "temp_max": "Max Temp °F",
+                "temp_min": "Min Temp °F",
+                "precipitation": "Total Precip in"
+            })
+            
+            st.dataframe(
+                display_latest_weather_df[["Max Temp °F", "Min Temp °F", "Total Precip in"]],
+                hide_index=True
+            )
+        else:
+            st.warning("No weather data available for the latest checklist date.")
+    else:
+        st.warning("No data available for the latest checklist.")
+        
 st.subheader("⏱️ Filter by Date Range ⏱️")
 
 main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
