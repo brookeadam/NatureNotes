@@ -90,7 +90,7 @@ def clean_ebird_data(df):
     
 # === HEADER ===
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated biweekly.</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated monthly.</h4>", unsafe_allow_html=True)
 
 # === Data Loading and Preprocessing ===
 MIN_DATE = datetime.date(1985, 1, 1)
