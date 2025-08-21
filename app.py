@@ -11,7 +11,6 @@ HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
 LATITUDE = 29.4689
 LONGITUDE = -98.4798
 DATA_DIR = Path("data")
-# Updated to use the CSV file
 EBIRD_DATA_FILE = Path("historical_checklists.csv")
 
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
@@ -70,7 +69,6 @@ def clean_ebird_data(df):
     if df.empty:
         return df
     
-    # Standardize column names for processing, including the correct time column
     df_cleaned = df.rename(columns={
         "COMMON NAME": "Species",
         "SCIENTIFIC NAME": "Scientific Name",
@@ -79,11 +77,9 @@ def clean_ebird_data(df):
         "TIME OBSERVATIONS STARTED": "Time"
     })
     
-    # Convert date and count to proper types
     df_cleaned["Count"] = pd.to_numeric(df_cleaned["Count"], errors='coerce').fillna(0).astype(int)
     df_cleaned["Date"] = pd.to_datetime(df_cleaned["Date"])
 
-    # Group by key fields and aggregate the counts
     cleaned_df = df_cleaned.groupby(
         ["Species", "Scientific Name", "Date", "Time"]
     ).agg(
@@ -96,16 +92,13 @@ def clean_ebird_data(df):
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated biweekly.</h4>", unsafe_allow_html=True)
 
-# Define the minimum and maximum dates for filtering
+# === Data Loading and Preprocessing ===
 MIN_DATE = datetime.date(1985, 1, 1)
 MAX_DATE = datetime.date(2035, 12, 31)
 
-# === Data Loading and Preprocessing ===
-# Load data from files at the top of the script
 ebird_df = load_ebird_data_from_file()
-
-# Initialize merged_df to prevent NameError if ebird_df is empty
 merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
+
 if not ebird_df.empty:
     merged_df = ebird_df.rename(columns={
         "COMMON NAME": "Species",
@@ -126,32 +119,29 @@ if not merged_df.empty:
     if not latest_checklist_df.empty:
         st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
         
-        # Display the table of species from the latest checklist
         latest_checklist_table = latest_checklist_df.sort_values(
             "Count", ascending=False
         ).copy()
         
         st.dataframe(
-    display_weather_df.style.set_properties(**{'text-align': 'left'}).format(
-        {
-            'Max Temp °F': '{:.2f}',
-            'Min Temp °F': '{:.2f}',
-            'Total Precip in': '{:.4f}'
-        }
-    ),
-    use_container_width=True,
-    hide_index=True
-)
+            latest_checklist_table[["Species", "Scientific Name", "Count"]].rename(
+                columns={
+                    "Species": "COMMON NAME",
+                    "Scientific Name": "SCIENTIFIC NAME",
+                    "Count": "OBSERVATION COUNT"
+                }
+            ).style.set_properties(**{'text-align': 'left'}),
+            use_container_width=True
+        )
 
-        # Find and display the weather metrics for the latest checklist date
-        weather_df = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
-        weather_filtered = weather_df.copy()
-        weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
-        weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
+        weather_df_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
+        weather_filtered_latest = weather_df_latest.copy()
+        weather_filtered_latest["Date"] = pd.to_datetime(weather_filtered_latest["Date"])
+        weather_filtered_latest = weather_filtered_latest.dropna(subset=["temp_max", "temp_min"])
 
-        if not weather_filtered.empty:
+        if not weather_filtered_latest.empty:
             st.subheader(f"Weather for {latest_date.date()}")
-            display_latest_weather_df = weather_filtered.copy()
+            display_latest_weather_df = weather_filtered_latest.copy()
             display_latest_weather_df["Date"] = display_latest_weather_df["Date"].dt.strftime("%Y-%m-%d")
             
             display_latest_weather_df = display_latest_weather_df.rename(columns={
@@ -160,17 +150,15 @@ if not merged_df.empty:
                 "precipitation": "Total Precip in"
             })
             
-st.dataframe(
-    display_weather_df.style.set_properties(**{'text-align': 'left'}).format(
-        {
-            'Max Temp °F': '{:.2f}',
-            'Min Temp °F': '{:.2f}',
-            'Total Precip in': '{:.4f}'
-        }
-    ),
-    use_container_width=True,
-    hide_index=True
-)
+            st.dataframe(
+                display_latest_weather_df[["Max Temp °F", "Min Temp °F", "Total Precip in"]],
+                hide_index=True
+            )
+        else:
+            st.warning("No weather data available for the latest checklist date.")
+    else:
+        st.warning("No data available for the latest checklist.")
+
 # === Recent eBird Sightings Section (User-Filtered) ===
 st.subheader("🔎 Recent eBird Sightings 🔎")
 st.subheader("⏱️ Filter by Date Range ⏱️")
@@ -178,7 +166,6 @@ st.subheader("⏱️ Filter by Date Range ⏱️")
 main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
 main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
 
-# Load weather data based on the selected date range
 weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
 weather_filtered = weather_df.copy()
 weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
@@ -255,7 +242,6 @@ with col2:
     range2_end = st.date_input("Range 2 End", key="range2_end", min_value=MIN_DATE, max_value=MAX_DATE)
 
 if st.button("Compare Species and Weather"):
-    # Filter bird data
     range_a_birds = merged_df[
         (merged_df["Date"] >= pd.to_datetime(range1_start)) &
         (merged_df["Date"] <= pd.to_datetime(range1_end))
@@ -265,7 +251,6 @@ if st.button("Compare Species and Weather"):
         (merged_df["Date"] <= pd.to_datetime(range2_end))
     ]
 
-    # Summary stats
     unique_species_a = range_a_birds["Species"].nunique()
     unique_species_b = range_b_birds["Species"].nunique()
     total_birds_a = range_a_birds["Count"].sum()
@@ -275,7 +260,6 @@ if st.button("Compare Species and Weather"):
     st.write(f"**Range A ({range1_start}–{range1_end}):** {unique_species_a} unique species, {total_birds_a} total birds")
     st.write(f"**Range B ({range2_start}–{range2_end}):** {unique_species_b} unique species, {total_birds_b} total birds")
     
-    # Species comparison table
     table_a = range_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
     table_b = range_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
 
@@ -297,7 +281,6 @@ if st.button("Compare Species and Weather"):
         ),
         use_container_width=True
     )
-    # Weather comparison
     st.subheader("🌡️ Weather Trends (Detailed) 🌡️")
     weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
     weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
