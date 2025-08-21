@@ -204,7 +204,6 @@ if not merged_df.empty:
     else:
         st.warning("No recent observations available for the selected date range.")
 
----
 # === Weather Metrics Section (User-Filtered) ===
 st.subheader("🌡️ Weather Metrics 🌡️")
 
@@ -244,7 +243,6 @@ if not weather_filtered.empty:
 else:
     st.warning("No weather data available for the selected date range.")
 
----
 # === Species Count Comparison ==
 st.subheader("📊 Species Comparison by Date Range 📊")
 
@@ -366,7 +364,6 @@ if st.button("Compare Species and Weather"):
     else:
         st.info("No weather data for Range B.")
 
----
 # === Compare Specific Checklists ===
 st.markdown("---")
 st.subheader("📝 Compare Specific Checklists 📝")
