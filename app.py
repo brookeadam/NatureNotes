@@ -160,16 +160,17 @@ if not merged_df.empty:
                 "precipitation": "Total Precip in"
             })
             
-            st.dataframe(
-                display_latest_weather_df[["Max Temp °F", "Min Temp °F", "Total Precip in"]],
-                hide_index=True
-            )
-        else:
-            st.warning("No weather data available for the latest checklist date.")
-    else:
-        st.warning("No data available for the latest checklist.")
-
----
+st.dataframe(
+    display_weather_df.style.set_properties(**{'text-align': 'left'}).format(
+        {
+            'Max Temp °F': '{:.2f}',
+            'Min Temp °F': '{:.2f}',
+            'Total Precip in': '{:.4f}'
+        }
+    ),
+    use_container_width=True,
+    hide_index=True
+)
 # === Recent eBird Sightings Section (User-Filtered) ===
 st.subheader("🔎 Recent eBird Sightings 🔎")
 st.subheader("⏱️ Filter by Date Range ⏱️")
