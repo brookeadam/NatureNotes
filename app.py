@@ -168,6 +168,9 @@ weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_d
 ebird_df = load_ebird_data_from_file()
 
 # === Data Cleaning & Preprocessing ===
+# Initialize merged_df to an empty DataFrame outside the if block
+merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
+
 if not ebird_df.empty:
     # Renamed to match the CSV column headers
     merged_df = ebird_df.rename(columns={
@@ -179,8 +182,6 @@ if not ebird_df.empty:
     # Convert 'Count' column to numeric, replacing errors with NaN
     merged_df["Count"] = pd.to_numeric(merged_df["Count"], errors='coerce').fillna(0).astype(int)
     merged_df["Date"] = pd.to_datetime(merged_df["Date"])
-else:
-    merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 # === Display Recent eBird Sightings ===
 if not merged_df.empty:
