@@ -160,8 +160,7 @@ if not merged_df.empty:
         st.warning("No data available for the latest checklist.")
 
 # === Recent eBird Sightings Section (User-Filtered) ===
-st.subheader("🔎 Recent eBird Sightings 🔎")
-st.subheader("⏱️ Filter by Date Range ⏱️")
+st.subheader("⏱️ Filter by Single Date Range ⏱️")
 
 main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
 main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
@@ -231,7 +230,7 @@ else:
     st.warning("No weather data available for the selected date range.")
 
 # === Species Count Comparison ==
-st.subheader("📊 Species Comparison by Date Range 📊")
+st.subheader("📊 Comparison Two Date Ranges 📊")
 
 col1, col2 = st.columns(2)
 with col1:
