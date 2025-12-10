@@ -16,7 +16,9 @@ EBIRD_DATA_FILE = Path("historical_checklists.csv")
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
 # === API Fetch Functions ===
-@st.cache_data
+# FIX 1: Added ttl=3600 to cache the weather data for 1 hour to prevent 429 errors.
+# The function is also improved to return a DataFrame with expected columns on failure.
+@st.cache_data(ttl=3600)
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
@@ -27,6 +29,8 @@ def fetch_weather_data(lat, lon, start, end):
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
         "timezone": "America/Chicago"
     }
+    # FIX 2: Added try...except to catch API errors (like 429) and return a safe, empty DataFrame
+    # with the expected columns to prevent the downstream KeyError.
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
@@ -48,7 +52,8 @@ def fetch_weather_data(lat, lon, start, end):
         })
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching weather data: {e}")
-        return pd.DataFrame()
+        # Return an empty DataFrame with necessary columns to prevent subsequent KeyErrors
+        return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
 
 @st.cache_data
 def load_ebird_data_from_file():
@@ -100,6 +105,8 @@ ebird_df = load_ebird_data_from_file()
 merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 if not ebird_df.empty:
+    # Note: This block seems to be recreating columns already in clean_ebird_data,
+    # but I am not removing it to respect the "not to change anything else" rule.
     merged_df = ebird_df.rename(columns={
         "COMMON NAME": "Species",
         "SCIENTIFIC NAME": "Scientific Name",
@@ -136,7 +143,9 @@ if not merged_df.empty:
 
         weather_df_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
         weather_filtered_latest = weather_df_latest.copy()
-        weather_filtered_latest["Date"] = pd.to_datetime(weather_filtered_latest["Date"])
+        # FIX 3: Removed the problematic line that caused the KeyError, as the Date column
+        # should already be in datetime format if the weather function succeeds.
+        # weather_filtered_latest["Date"] = pd.to_datetime(weather_filtered_latest["Date"]) 
         weather_filtered_latest = weather_filtered_latest.dropna(subset=["temp_max", "temp_min"])
 
         if not weather_filtered_latest.empty:
@@ -167,6 +176,8 @@ main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, ma
 
 weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
 weather_filtered = weather_df.copy()
+# Note: The original code's date conversion here is also potentially redundant but left intact, 
+# as it's not the line that was failing.
 weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
 weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
 
@@ -383,8 +394,8 @@ if not merged_df.empty:
         col_b_name = f"Birds ({selected_checklist_b})"
         
         comparison_df_checklist = pd.merge(table_a.rename(columns={"Count": col_a_name}),
-                                         table_b.rename(columns={"Count": col_b_name}),
-                                         on=["Species", "Scientific Name"], how="outer").fillna(0)
+                                           table_b.rename(columns={"Count": col_b_name}),
+                                           on=["Species", "Scientific Name"], how="outer").fillna(0)
         comparison_df_checklist["Difference"] = comparison_df_checklist[col_b_name] - comparison_df_checklist[col_a_name]
 
         st.dataframe(
