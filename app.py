@@ -56,21 +56,68 @@ def load_ebird_data_from_file():
         return pd.DataFrame()
 
 @st.cache_data
+@st.cache_data
 def clean_ebird_data(df):
     """
-    Cleans the eBird data by grouping entries and taking the max count
-    for each unique observation to remove duplicate reports.
+    Robust eBird CSV cleaner:
+    - Handles tab-delimited or weirdly formatted exports
+    - Normalizes column names
+    - Finds Count column flexibly
+    - Returns deduplicated dataframe
     """
+
     if df.empty:
         return df
 
-    df_cleaned = df.rename(columns={
-        "COMMON NAME": "Species",
-        "SCIENTIFIC NAME": "Scientific Name",
-        "OBSERVATION COUNT": "Count",
-        "OBSERVATION DATE": "Date",
-        "TIME OBSERVATIONS STARTED": "Time"
+    # --- Step 1: Fix tab-delimited single-column CSVs ---
+    if len(df.columns) == 1 and "\t" in df.columns[0]:
+        df = df.iloc[:, 0].str.split("\t", expand=True)
+        df.columns = [c.strip() for c in df.iloc[0]]
+        df = df.iloc[1:].reset_index(drop=True)
+
+    # --- Step 2: Normalize column names ---
+    df.columns = [c.strip().upper() for c in df.columns]
+
+    # --- Step 3: Map columns flexibly ---
+    column_map = {
+        "SPECIES": ["COMMON NAME", "SPECIES"],
+        "SCIENTIFIC NAME": ["SCIENTIFIC NAME"],
+        "COUNT": ["COUNT", "OBSERVATION COUNT", "HOW MANY", "NUMBER OBSERVED"],
+        "DATE": ["OBSERVATION DATE", "DATE"],
+        "TIME": ["TIME OBSERVATIONS STARTED", "TIME"]
+    }
+
+    resolved = {}
+    for key, options in column_map.items():
+        for opt in options:
+            if opt in df.columns:
+                resolved[key] = opt
+                break
+
+    missing = [k for k in column_map if k not in resolved]
+    if missing:
+        st.error(f"Missing required eBird columns: {missing}\nColumns detected: {list(df.columns)}")
+        return pd.DataFrame()
+
+    # --- Step 4: Build cleaned DataFrame ---
+    df_cleaned = pd.DataFrame({
+        "Species": df[resolved["SPECIES"]],
+        "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
+        "Date": pd.to_datetime(df[resolved["DATE"]], errors="coerce"),
+        "Time": df[resolved["TIME"]],
+        "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
     })
+
+    df_cleaned = df_cleaned.dropna(subset=["Date"])
+
+    # --- Step 5: Deduplicate overlapping entries ---
+    df_cleaned = (
+        df_cleaned
+        .groupby(["Species", "Scientific Name", "Date", "Time"], as_index=False)
+        .agg(Count=("Count", "max"))
+    )
+
+    return df_cleaned
 
     # === FIX: robust Count handling (no KeyError possible) ===
     COUNT_COLUMN_ALIASES = [
