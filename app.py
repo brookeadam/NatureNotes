@@ -16,8 +16,6 @@ EBIRD_DATA_FILE = Path("historical_checklists.csv")
 st.set_page_config(page_title="Nature Notes @ Headwaters", layout="wide")
 
 # === API Fetch Functions ===
-# FIX 1: Added ttl=3600 to cache the weather data for 1 hour to prevent 429 errors.
-# The function is also improved to return a DataFrame with expected columns on failure.
 @st.cache_data(ttl=3600)
 def fetch_weather_data(lat, lon, start, end):
     url = "https://archive-api.open-meteo.com/v1/archive"
@@ -29,38 +27,25 @@ def fetch_weather_data(lat, lon, start, end):
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
         "timezone": "America/Chicago"
     }
-    # FIX 2: Added try...except to catch API errors (like 429) and return a safe, empty DataFrame
-    # with the expected columns to prevent the downstream KeyError.
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
         data = response.json()
         return pd.DataFrame({
             "Date": pd.to_datetime(data.get("daily", {}).get("time", [])),
-            "temp_max": [
-                (t * 9/5 + 32) if t is not None else None
-                for t in data.get("daily", {}).get("temperature_2m_max", [])
-            ],
-            "temp_min": [
-                (t * 9/5 + 32) if t is not None else None
-                for t in data.get("daily", {}).get("temperature_2m_min", [])
-            ],
-            "precipitation": [
-                (p * 0.0393701) if p is not None else None
-                for p in data.get("daily", {}).get("precipitation_sum", [])
-            ]
+            "temp_max": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_max", [])],
+            "temp_min": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_min", [])],
+            "precipitation": [(p * 0.0393701) if p is not None else None for p in data.get("daily", {}).get("precipitation_sum", [])]
         })
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching weather data: {e}")
-        # Return an empty DataFrame with necessary columns to prevent subsequent KeyErrors
         return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
 
 @st.cache_data
 def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
-        df = pd.read_csv(EBIRD_DATA_FILE, encoding='cp1252', on_bad_lines='skip')
-        cleaned_df = clean_ebird_data(df)
-        return cleaned_df
+        df = pd.read_csv(EBIRD_DATA_FILE, encoding="cp1252", on_bad_lines="skip")
+        return clean_ebird_data(df)
     else:
         st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
         return pd.DataFrame()
@@ -73,7 +58,7 @@ def clean_ebird_data(df):
     """
     if df.empty:
         return df
-    
+
     df_cleaned = df.rename(columns={
         "COMMON NAME": "Species",
         "SCIENTIFIC NAME": "Scientific Name",
@@ -81,18 +66,39 @@ def clean_ebird_data(df):
         "OBSERVATION DATE": "Date",
         "TIME OBSERVATIONS STARTED": "Time"
     })
-    
-    df_cleaned["Count"] = pd.to_numeric(df_cleaned["Count"], errors='coerce').fillna(0).astype(int)
+
+    # === FIX: robust Count handling (no KeyError possible) ===
+    COUNT_COLUMN_ALIASES = [
+        "Count",
+        "OBSERVATION COUNT",
+        "Observation Count",
+        "HOW MANY",
+        "How Many",
+        "Number Observed"
+    ]
+
+    count_col = next((c for c in COUNT_COLUMN_ALIASES if c in df_cleaned.columns), None)
+
+    if count_col is None:
+        st.error(f"No count column found in eBird data. Columns detected: {df_cleaned.columns.tolist()}")
+        df_cleaned["Count"] = 0
+    else:
+        df_cleaned["Count"] = (
+            pd.to_numeric(df_cleaned[count_col], errors="coerce")
+            .fillna(0)
+            .astype(int)
+        )
+
     df_cleaned["Date"] = pd.to_datetime(df_cleaned["Date"])
 
     cleaned_df = df_cleaned.groupby(
         ["Species", "Scientific Name", "Date", "Time"]
     ).agg(
-        Count=('Count', 'max')
+        Count=("Count", "max")
     ).reset_index()
 
     return cleaned_df
-    
+
 # === HEADER ===
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated monthly.</h4>", unsafe_allow_html=True)
@@ -105,15 +111,13 @@ ebird_df = load_ebird_data_from_file()
 merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 if not ebird_df.empty:
-    # Note: This block seems to be recreating columns already in clean_ebird_data,
-    # but I am not removing it to respect the "not to change anything else" rule.
     merged_df = ebird_df.rename(columns={
         "COMMON NAME": "Species",
         "SCIENTIFIC NAME": "Scientific Name",
         "OBSERVATION COUNT": "Count",
         "OBSERVATION DATE": "Date"
     })
-    merged_df["Count"] = pd.to_numeric(merged_df["Count"], errors='coerce').fillna(0).astype(int)
+    merged_df["Count"] = pd.to_numeric(merged_df["Count"], errors="coerce").fillna(0).astype(int)
     merged_df["Date"] = pd.to_datetime(merged_df["Date"])
 
 # === Latest Checklist Section ===
