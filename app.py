@@ -101,7 +101,7 @@ st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings
 MIN_DATE = datetime.date(1985, 1, 1)
 MAX_DATE = datetime.date(2035, 12, 31)
 
-ebird_df = load_ebird_data_from_file()
+ebird_df = load_ebird_data_from_file(historical_checklists.csv)
 merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
 
 if not ebird_df.empty:
