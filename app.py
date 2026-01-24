@@ -44,7 +44,12 @@ def fetch_weather_data(lat, lon, start, end):
 @st.cache_data
 def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
-        df = pd.read_csv(EBIRD_DATA_FILE, encoding="cp1252", on_bad_lines="skip")
+        df = pd.read_csv(
+    EBIRD_DATA_FILE,
+    sep="\t",
+    encoding="cp1252",
+    on_bad_lines="skip"
+)
         return clean_ebird_data(df)
     else:
         st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
