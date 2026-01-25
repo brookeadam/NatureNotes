@@ -45,17 +45,16 @@ def fetch_weather_data(lat, lon, start, end):
 def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
         df = pd.read_csv(
-    EBIRD_DATA_FILE,
-    sep="\t",
-    encoding="cp1252",
-    on_bad_lines="skip"
-)
+            EBIRD_DATA_FILE,
+            sep="\t",
+            encoding="cp1252",
+            on_bad_lines="skip"
+        )
         return clean_ebird_data(df)
     else:
         st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
         return pd.DataFrame()
 
-@st.cache_data
 @st.cache_data
 def clean_ebird_data(df):
     """
@@ -117,39 +116,14 @@ def clean_ebird_data(df):
         .agg(Count=("Count", "max"))
     )
 
-    return df_cleaned
-
-    # === FIX: robust Count handling (no KeyError possible) ===
-    COUNT_COLUMN_ALIASES = [
-        "Count",
-        "OBSERVATION COUNT",
-        "Observation Count",
-        "HOW MANY",
-        "How Many",
-        "Number Observed"
-    ]
-
-    count_col = next((c for c in COUNT_COLUMN_ALIASES if c in df_cleaned.columns), None)
-
-    if count_col is None:
-        st.error(f"No count column found in eBird data. Columns detected: {df_cleaned.columns.tolist()}")
+    # --- Step 6: Ensure Count column exists ---
+    if "Count" not in df_cleaned.columns:
+        st.error(f"No Count column found in eBird data. Columns detected: {df_cleaned.columns.tolist()}")
         df_cleaned["Count"] = 0
     else:
-        df_cleaned["Count"] = (
-            pd.to_numeric(df_cleaned[count_col], errors="coerce")
-            .fillna(0)
-            .astype(int)
-        )
+        df_cleaned["Count"] = pd.to_numeric(df_cleaned["Count"], errors="coerce").fillna(0).astype(int)
 
-    df_cleaned["Date"] = pd.to_datetime(df_cleaned["Date"])
-
-    cleaned_df = df_cleaned.groupby(
-        ["Species", "Scientific Name", "Date", "Time"]
-    ).agg(
-        Count=("Count", "max")
-    ).reset_index()
-
-    return cleaned_df
+    return df_cleaned
 
 # === HEADER ===
 st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
