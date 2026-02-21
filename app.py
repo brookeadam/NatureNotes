@@ -19,3 +19,6 @@ Use the sidebar to navigate between:
 """)
 
 st.info("Select a page from the sidebar to begin.")
+
+st.sidebar.write("Sidebar is active")
+st.write("Main page")
