@@ -1,46 +1,46 @@
-Date,Region,Location Code,Location Name,Common Name,Count
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Black Swallowtail,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Little Yellow,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Gray Hairstreak,2
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Western Pygmy-Blue,7
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Ceraunus Blue,7
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Reakirt's Blue,8
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Fatal Metalmark,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Gulf Fritillary,8
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Theona Checkerspot,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Bordered Patch,5
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Texan Crescent,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Vesta Crescent,2
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Phaon Crescent,2
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Common Buckeye,3
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Hackberry Emperor,2
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Queen,8
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,White-striped Longtail,50
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Long-tailed skipper,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Northern Cloudywing,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Com/White Checkered-Skipper,30
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Clouded Skipper,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Orange Skipperling,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Southern Skipperling,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Fiery Skipper,7
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Southern Broken-Dash,1
-7/10/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Sachem,1
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Pipevine Swallowtail,2
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Little Yellow,4
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Gray Hairstreak,2
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Western Pygmy-Blue,2
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Ceraunus Blue,50
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Fatal Metalmark,9
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Gulf Fritillary,15
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Variegated Fritillary,2
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Common Buckeye,1
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Hackberry Emperor,2
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Tawny Emperor,3
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Queen,1
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,White-striped Longtail,50
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Com/White Checkered-Skipper,6
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Clouded Skipper,1
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Fiery Skipper,5
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Sachem,1
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Dun Skipper,1
-10/15/2025,Central & South San Antonio,HS,Headwaters Sanctuary,Eufala Skipper,1
+DATE,COMMON NAME,SCIENTIFIC NAME,COUNT
+7/10/2025,Black Swallowtail,Papilio polyxenes,1
+7/10/2025,Bordered Patch,Chlosyne lacinia,5
+7/10/2025,Ceraunus Blue,Hemiargus ceraunus,7
+10/15/2025,Ceraunus Blue,Hemiargus ceraunus,50
+7/10/2025,Clouded Skipper,Lerema accius,1
+10/15/2025,Clouded Skipper,Lerema accius,1
+7/10/2025,Com/White Checkered-Skipper,Burnsius communis/albescens,30
+10/15/2025,Com/White Checkered-Skipper,Burnsius communis/albescens,6
+7/10/2025,Common Buckeye,Junonia coenia,3
+10/15/2025,Common Buckeye,Junonia coenia,1
+10/15/2025,Dun Skipper,Euphyes vestris,1
+10/15/2025,Eufala Skipper,Lerodea eufala,1
+7/10/2025,Fatal Metalmark,Calephelis nemesis,1
+10/15/2025,Fatal Metalmark,Calephelis nemesis,9
+7/10/2025,Fiery Skipper,Hylephila phyleus,7
+10/15/2025,Fiery Skipper,Hylephila phyleus,5
+7/10/2025,Gray Hairstreak,Strymon melinus,2
+10/15/2025,Gray Hairstreak,Strymon melinus,2
+7/10/2025,Gulf Fritillary,Agraulis vanillae,8
+10/15/2025,Gulf Fritillary,Agraulis vanillae,15
+7/10/2025,Hackberry Emperor,Asterocampa celtis,2
+10/15/2025,Hackberry Emperor,Asterocampa celtis,2
+7/10/2025,Little Yellow,Pyrisitia lisa,1
+10/15/2025,Little Yellow,Pyrisitia lisa,4
+7/10/2025,Long-tailed skipper,Urbanus proteus,1
+7/10/2025,Northern Cloudywing,Thorybes pylades,1
+7/10/2025,Orange Skipperling,Copaeodes aurantiaca,1
+7/10/2025,Phaon Crescent,Phyciodes phaon,2
+10/15/2025,Pipevine Swallowtail,Battus philenor,2
+7/10/2025,Queen,Danaus gilippus,8
+10/15/2025,Queen,Danaus gilippus,1
+7/10/2025,Reakirt's Blue,Echinargus isola,8
+7/10/2025,Sachem,Atalopedes campestris,1
+10/15/2025,Sachem,Atalopedes campestris,1
+7/10/2025,Southern Broken-Dash,Wallengrenia otho,1
+7/10/2025,Southern Skipperling,Copaeodes minima,1
+10/15/2025,Tawny Emperor,Asterocampa clyton,3
+7/10/2025,Texan Crescent,Anthanassa texana,1
+7/10/2025,Theona Checkerspot,Chlosyne theona,1
+10/15/2025,Variegated Fritillary,Euptoieta claudia,2
+7/10/2025,Vesta Crescent,Phyciodes vesta,2
+7/10/2025,Western Pygmy-Blue,Brephidium exilis,7
+10/15/2025,Western Pygmy-Blue,Brephidium exilis,2
+7/10/2025,White-striped Longtail,Chioides albofasciatus,50
+10/15/2025,White-striped Longtail,Chioides albofasciatus,50
