@@ -6,19 +6,25 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("NatureNotes Ecological Dashboard 🌿")
+# -------------------------
+# SIDEBAR NAVIGATION
+# -------------------------
 
-st.markdown("""
-Welcome to **NatureNotes**.
+st.sidebar.title("NatureNotes 🌿")
 
-Use the sidebar to navigate between:
+page = st.sidebar.radio(
+    "Select Dashboard",
+    ["eBird Dashboard", "Butterfly Dashboard"]
+)
 
-- 🐦 eBird Observation Dashboard  
-- 🦋 Butterfly Observation Dashboard  
+# -------------------------
+# PAGE ROUTING
+# -------------------------
 
-""")
+if page == "eBird Dashboard":
+    from pages import _1_eBird_Dashboard as ebird
+    ebird.main()
 
-st.info("Select a page from the sidebar to begin.")
-
-st.sidebar.write("Sidebar is active")
-st.write("Main page")
+elif page == "Butterfly Dashboard":
+    from pages import _2_Butterfly_Dashboard as butterfly
+    butterfly.main()
