@@ -14,7 +14,7 @@ st.sidebar.title("NatureNotes 🌿")
 
 page = st.sidebar.radio(
     "Select Dashboard",
-    ["eBird Dashboard", "Butterfly Dashboard"]
+    ["eBird Dashboard", "Butterfly Dashboard", "Phenology Dashboard"]
 )
 
 # -------------------------
@@ -28,3 +28,7 @@ if page == "eBird Dashboard":
 elif page == "Butterfly Dashboard":
     from pages import _2_Butterfly_Dashboard as butterfly
     butterfly.main()
+
+elif page == "Phenology Dashboard":
+    from pages import _3_Phenology_Dashboard as phenology
+    phenology.main()
