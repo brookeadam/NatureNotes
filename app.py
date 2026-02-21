@@ -46,7 +46,7 @@ def load_ebird_data_from_file():
     if EBIRD_DATA_FILE.exists():
         df = pd.read_csv(
             EBIRD_DATA_FILE,
-            sep="\t",
+            sep=None, engine="python",
             encoding="cp1252",
             on_bad_lines="skip"
         )
