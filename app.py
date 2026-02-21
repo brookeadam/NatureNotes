@@ -168,7 +168,8 @@ if not merged_df.empty:
                     "Count": "OBSERVATION COUNT"
                 }
             ).style.set_properties(**{'text-align': 'left'}),
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
 
         weather_df_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
@@ -227,7 +228,7 @@ if not merged_df.empty:
         })
         
         styled_table = table_df.style.set_properties(**{'text-align': 'left'})
-        st.dataframe(styled_table, use_container_width=True)
+        st.dataframe(styled_table, use_container_width=True, hide_index=True)
     else:
         st.warning("No recent observations available for the selected date range.")
 
@@ -265,7 +266,8 @@ if not weather_filtered.empty:
                 'Total Precip in': '{:.4f}'
             }
         ),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
 else:
     st.warning("No weather data available for the selected date range.")
@@ -319,7 +321,8 @@ if st.button("Compare Species and Weather"):
                 'Difference': '{:.0f}'
             }
         ),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
     st.subheader("🌡️ Weather Trends (Detailed) 🌡️")
     weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
@@ -351,7 +354,8 @@ if st.button("Compare Species and Weather"):
                     'Total Precip in': '{:.4f}'
                 }
             ),
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
     else:
         st.info("No weather data for Range A.")
@@ -382,7 +386,8 @@ if st.button("Compare Species and Weather"):
                     'Total Precip in': '{:.4f}'
                 }
             ),
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
     else:
         st.info("No weather data for Range B.")
@@ -436,7 +441,8 @@ if not merged_df.empty:
                     'Difference': '{:.0f}'
                 }
             ),
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
         
         st.subheader("🌡️ Weather Comparison 🌡️")
@@ -498,7 +504,8 @@ if not merged_df.empty:
                         'Total Precip in': '{:.4f}'
                     }
                 ),
-                use_container_width=True
+                use_container_width=True,
+                hide_index=True
             )
         else:
             st.info(f"No weather data available for Checklist B ({selected_checklist_b}).")
