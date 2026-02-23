@@ -6,12 +6,10 @@ from datetime import datetime
 # -------------------------
 # WEATHER HELPER & CONSTANTS
 # -------------------------
-# Coordinates for Headwaters at Incarnate Word
 LATITUDE = 29.4678 
 LONGITUDE = -98.4750
 
 def fetch_weather_data(lat, lon, start_date, end_date):
-    """Fetches historical weather data from Open-Meteo API."""
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": lat,
@@ -62,7 +60,7 @@ def main():
 
     missing = [col for col in required_cols if col not in historical_df.columns]
 
-   if missing:
+    if missing:
         st.error(f"Missing required columns: {missing}")
     else:
         st.header("Historical Summary")
@@ -83,7 +81,7 @@ def main():
         if not most_common.empty:
             col3.metric("Most Observed", most_common.index[0])
 
-        # NEW: Format the date for the UI
+        # Formatting Date to YYYY-MM-DD for the display table
         display_df = historical_df.copy()
         display_df["DATE"] = display_df["DATE"].dt.strftime("%Y-%m-%d")
 
@@ -108,13 +106,12 @@ def main():
         date_a = unique_dates[0]
         date_b = unique_dates[1]
         
-        # Defining these variables so the weather summary can label them
-        selected_checklist_a = date_a.date()
-        selected_checklist_b = date_b.date()
+        selected_checklist_a = pd.to_datetime(date_a).date()
+        selected_checklist_b = pd.to_datetime(date_b).date()
 
         st.subheader("Survey Dates Compared")
-        st.write(f"Date A: {pd.to_datetime(date_a).date()}")
-        st.write(f"Date B: {pd.to_datetime(date_b).date()}")
+        st.write(f"Date A: {selected_checklist_a}")
+        st.write(f"Date B: {selected_checklist_b}")
 
         df_a = historical_df[historical_df["DATE"] == date_a]
         df_b = historical_df[historical_df["DATE"] == date_b]
@@ -123,11 +120,9 @@ def main():
         grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date B")
 
         comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
-
         comparison["Difference"] = comparison["Date B"] - comparison["Date A"]
 
         st.subheader("Species Comparison")
-
         st.dataframe(
             comparison.sort_values("Difference", ascending=False),
             use_container_width=True
@@ -139,112 +134,45 @@ def main():
 
         st.header("🌡️ Weather Comparison 🌡️")
 
-        weather_a = fetch_weather_data(
-            LATITUDE, LONGITUDE, date_a.date(), date_a.date()
-        )
-        weather_b = fetch_weather_data(
-            LATITUDE, LONGITUDE, date_b.date(), date_b.date()
-        )
+        weather_a = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_a, selected_checklist_a)
+        weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
 
         if not weather_a.empty:
-
             max_temp_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
             min_temp_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
 
-            max_temp_a = max_temp_row_a["temp_max"]
-            max_temp_date_a = max_temp_row_a["Date"].strftime("%Y-%m-%d")
-
-            min_temp_a = min_temp_row_a["temp_min"]
-            min_temp_date_a = min_temp_row_a["Date"].strftime("%Y-%m-%d")
-
-            total_precip_a = weather_a["precipitation"].sum()
-
             st.write(
                 f"**Weather Summary: Checklist A ({selected_checklist_a}):** "
-                f"Max Temp: {max_temp_a:.2f}°F on {max_temp_date_a}, "
-                f"Min Temp: {min_temp_a:.2f}°F on {min_temp_date_a}, "
-                f"Total Precip: {total_precip_a:.4f} in"
+                f"Max Temp: {max_temp_row_a['temp_max']:.2f}°F, "
+                f"Min Temp: {min_temp_row_a['temp_min']:.2f}°F, "
+                f"Total Precip: {weather_a['precipitation'].sum():.4f} in"
             )
 
             renamed_a = weather_a.copy()
             renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-
-            renamed_a = renamed_a.rename(
-                columns={
-                    "temp_max": "Max Temp °F",
-                    "temp_min": "Min Temp °F",
-                    "precipitation": "Total Precip in",
-                }
-            )
-
-            st.dataframe(
-                renamed_a.style.set_properties(**{"text-align": "left"}).format(
-                    {
-                        "Max Temp °F": "{:.2f}",
-                        "Min Temp °F": "{:.2f}",
-                        "Total Precip in": "{:.4f}",
-                    }
-                ),
-                use_container_width=True,
-            )
-
+            st.dataframe(renamed_a, use_container_width=True, hide_index=True)
         else:
-            st.info(
-                f"No weather data available for Checklist A ({selected_checklist_a})."
-            )
+            st.info(f"No weather data available for {selected_checklist_a}.")
 
         if not weather_b.empty:
-
             max_temp_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
             min_temp_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
 
-            max_temp_b = max_temp_row_b["temp_max"]
-            max_temp_date_b = max_temp_row_b["Date"].strftime("%Y-%m-%d")
-
-            min_temp_b = min_temp_row_b["temp_min"]
-            min_temp_date_b = min_temp_row_b["Date"].strftime("%Y-%m-%d")
-
-            total_precip_b = weather_b["precipitation"].sum()
-
             st.write(
                 f"**Weather Summary: Checklist B ({selected_checklist_b}):** "
-                f"Max Temp: {max_temp_b:.2f}°F on {max_temp_date_b}, "
-                f"Min Temp: {min_temp_b:.2f}°F on {min_temp_date_b}, "
-                f"Total Precip: {total_precip_b:.4f} in"
+                f"Max Temp: {max_temp_row_b['temp_max']:.2f}°F, "
+                f"Min Temp: {min_temp_row_b['temp_min']:.2f}°F, "
+                f"Total Precip: {weather_b['precipitation'].sum():.4f} in"
             )
 
             renamed_b = weather_b.copy()
             renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
-
-            renamed_b = renamed_b.rename(
-                columns={
-                    "temp_max": "Max Temp °F",
-                    "temp_min": "Min Temp °F",
-                    "precipitation": "Total Precip in",
-                }
-            )
-
-            st.dataframe(
-                renamed_b.style.set_properties(**{"text-align": "left"}).format(
-                    {
-                        "Max Temp °F": "{:.2f}",
-                        "Min Temp °F": "{:.2f}",
-                        "Total Precip in": "{:.4f}",
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True,
-            )
-
+            st.dataframe(renamed_b, use_container_width=True, hide_index=True)
         else:
-            st.info(
-                f"No weather data available for Checklist B ({selected_checklist_b})."
-            )
+            st.info(f"No weather data available for {selected_checklist_b}.")
 
     # === Footer ===
-
     st.markdown("---")
-
     st.markdown(
         "<div style='text-align: center; color: gray;'>"
         "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
@@ -254,3 +182,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
