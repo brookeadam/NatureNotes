@@ -97,3 +97,12 @@ def main():
     
         # Example placeholder — replace with your weather API call
         st.write(f"Weather data pull for {formatted_date} goes here.")
+
+    # === Footer ===
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: gray;'>"
+        "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
+        "</div>",
+        unsafe_allow_html=True
+    )
