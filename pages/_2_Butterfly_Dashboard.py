@@ -4,12 +4,14 @@ import requests
 from datetime import datetime
 
 # -------------------------
-# NEW: WEATHER HELPER & CONSTANTS
+# WEATHER HELPER & CONSTANTS
 # -------------------------
-LATITUDE = 29.4678  # Headwaters at Incarnate Word
+# Coordinates for Headwaters at Incarnate Word
+LATITUDE = 29.4678 
 LONGITUDE = -98.4750
 
 def fetch_weather_data(lat, lon, start_date, end_date):
+    """Fetches historical weather data from Open-Meteo API."""
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": lat,
@@ -32,7 +34,7 @@ def fetch_weather_data(lat, lon, start_date, end_date):
                 "temp_min": daily.get("temperature_2m_min", []),
                 "precipitation": daily.get("precipitation_sum", [])
             })
-    except:
+    except Exception:
         pass
     return pd.DataFrame()
 
@@ -103,7 +105,7 @@ def main():
         date_a = unique_dates[0]
         date_b = unique_dates[1]
         
-        # Defining these so your weather labels don't cause NameErrors
+        # Defining these variables so the weather summary can label them
         selected_checklist_a = date_a.date()
         selected_checklist_b = date_b.date()
 
