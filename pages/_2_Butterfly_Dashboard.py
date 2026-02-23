@@ -62,10 +62,9 @@ def main():
 
     missing = [col for col in required_cols if col not in historical_df.columns]
 
-    if missing:
+   if missing:
         st.error(f"Missing required columns: {missing}")
     else:
-
         st.header("Historical Summary")
 
         total_species = historical_df["COMMON NAME"].nunique()
@@ -84,8 +83,12 @@ def main():
         if not most_common.empty:
             col3.metric("Most Observed", most_common.index[0])
 
+        # NEW: Format the date for the UI
+        display_df = historical_df.copy()
+        display_df["DATE"] = display_df["DATE"].dt.strftime("%Y-%m-%d")
+
         st.dataframe(
-            historical_df.sort_values("DATE"),
+            display_df.sort_values("DATE"),
             use_container_width=True,
             hide_index=True
         )
