@@ -39,7 +39,7 @@ def fetch_weather_data(lat, lon, start_date, end_date):
 def main():
 
     st.set_page_config(
-        page_title="Nature Notes Butterfly Observations Dashboard for Headwaters at Incarnate Word",
+        page_title="Nature Notes Butterfly Observations Dashboard",
         layout="wide"
     )
 
@@ -48,16 +48,10 @@ def main():
     # -------------------------
 
     historical_df = pd.read_csv("san_antonio_butterfly_counts_consolidated_2025.csv")
-
     historical_df.columns = historical_df.columns.str.strip().str.upper()
-
-    historical_df["DATE"] = pd.to_datetime(
-        historical_df["DATE"],
-        errors="coerce"
-    )
+    historical_df["DATE"] = pd.to_datetime(historical_df["DATE"], errors="coerce")
 
     required_cols = ["COMMON NAME", "SCIENTIFIC NAME", "COUNT", "DATE"]
-
     missing = [col for col in required_cols if col not in historical_df.columns]
 
     if missing:
@@ -81,7 +75,7 @@ def main():
         if not most_common.empty:
             col3.metric("Most Observed", most_common.index[0])
 
-        # Formatting Date to YYYY-MM-DD for the display table
+        # Formatting Date for display (removes 00:00:00)
         display_df = historical_df.copy()
         display_df["DATE"] = display_df["DATE"].dt.strftime("%Y-%m-%d")
 
@@ -91,85 +85,69 @@ def main():
             hide_index=True
         )
 
-    # -------------------------
-    # TWO-DATE COMPARISON
-    # -------------------------
-
-    st.header("Date Comparison")
-
-    unique_dates = sorted(historical_df["DATE"].dropna().unique())
-
-    if len(unique_dates) < 2:
-        st.warning("This dashboard is designed for at least two survey dates.")
-    else:
-
-        date_a = unique_dates[0]
-        date_b = unique_dates[1]
-        
-        selected_checklist_a = pd.to_datetime(date_a).date()
-        selected_checklist_b = pd.to_datetime(date_b).date()
-
-        st.subheader("Survey Dates Compared")
-        st.write(f"Date A: {selected_checklist_a}")
-        st.write(f"Date B: {selected_checklist_b}")
-
-        df_a = historical_df[historical_df["DATE"] == date_a]
-        df_b = historical_df[historical_df["DATE"] == date_b]
-
-        grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date A")
-        grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date B")
-
-        comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
-        comparison["Difference"] = comparison["Date B"] - comparison["Date A"]
-
-        st.subheader("Species Comparison")
-        st.dataframe(
-            comparison.sort_values("Difference", ascending=False),
-            use_container_width=True
-        )
-
         # -------------------------
-        # WEATHER SECTION
+        # TWO-DATE COMPARISON
         # -------------------------
 
-        st.header("🌡️ Weather Comparison 🌡️")
+        st.header("Date Comparison")
+        unique_dates = sorted(historical_df["DATE"].dropna().unique())
 
-        weather_a = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_a, selected_checklist_a)
-        weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
+        if len(unique_dates) < 2:
+            st.warning("This dashboard is designed for at least two survey dates.")
+        else:
+            date_a = unique_dates[0]
+            date_b = unique_dates[1]
+            
+            selected_checklist_a = pd.to_datetime(date_a).date()
+            selected_checklist_b = pd.to_datetime(date_b).date()
 
-        if not weather_a.empty:
-            max_temp_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
-            min_temp_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
+            st.subheader("Survey Dates Compared")
+            st.write(f"Date A: {selected_checklist_a}")
+            st.write(f"Date B: {selected_checklist_b}")
 
-            st.write(
-                f"**Weather Summary: Checklist A ({selected_checklist_a}):** "
-                f"Max Temp: {max_temp_row_a['temp_max']:.2f}°F, "
-                f"Min Temp: {min_temp_row_a['temp_min']:.2f}°F, "
-                f"Total Precip: {weather_a['precipitation'].sum():.4f} in"
+            df_a = historical_df[historical_df["DATE"] == date_a]
+            df_b = historical_df[historical_df["DATE"] == date_b]
+
+            grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date A")
+            grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date B")
+
+            comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
+            comparison["Difference"] = comparison["Date B"] - comparison["Date A"]
+
+            st.subheader("Species Comparison")
+            st.dataframe(
+                comparison.sort_values("Difference", ascending=False),
+                use_container_width=True
             )
 
-            renamed_a = weather_a.copy()
-            renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-            st.dataframe(renamed_a, use_container_width=True, hide_index=True)
-        else:
-            st.info(f"No weather data available for {selected_checklist_a}.")
+            # -------------------------
+            # WEATHER SECTION
+            # -------------------------
 
-        if not weather_b.empty:
-            max_temp_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
-            min_temp_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
+            st.header("🌡️ Weather Comparison 🌡️")
 
-            st.write(
-                f"**Weather Summary: Checklist B ({selected_checklist_b}):** "
-                f"Max Temp: {max_temp_row_b['temp_max']:.2f}°F, "
-                f"Min Temp: {min_temp_row_b['temp_min']:.2f}°F, "
-                f"Total Precip: {weather_b['precipitation'].sum():.4f} in"
-            )
+            weather_a = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_a, selected_checklist_a)
+            weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
 
-            renamed_b = weather_b.copy()
-            renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
-            st.dataframe(renamed_b, use_container_width=True, hide_index=True)
-        else:
-            st.info(f"No weather data available for {selected_checklist_b}.")
+            if not weather_a.empty:
+                max_temp_a = weather_a["temp_max"].max()
+                min_temp_a = weather_a["temp_min"].min()
+                st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_a}°F, Min: {min_temp_a}°F")
+                
+                # Format weather date for display
+                weather_display_a = weather_a.copy()
+                weather_display_a["Date"] = weather_display_a["Date"].dt.strftime("%Y-%m-%d")
+                st.dataframe(weather_display_a, use_container_width=True, hide_index=True)
+
+            if not weather_b.empty:
+                max_temp_b = weather_b["temp_max"].max()
+                min_temp_b = weather_b["temp_min"].min()
+                st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_b}°F, Min: {min_temp_b}°F")
+                
+                # Format weather date for display
+                weather_display_b = weather_b.copy()
+                weather_display_b["Date"] = weather_display_b["Date"].dt.strftime("%Y-%m-%d")
+                st.dataframe(weather_display_b, use_container_width=True, hide_index=True)
 
     # === Footer ===
     st.markdown("---")
@@ -182,4 +160,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
