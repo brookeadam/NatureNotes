@@ -7,7 +7,6 @@ def main():
 
     st.set_page_config(page_title="Nature Notes Butterfly Observations Dashboard for Headwaters at Incarnate Word", layout="wide")
     
-
     # -------------------------
     # LOAD HISTORICAL DATA
     # -------------------------
