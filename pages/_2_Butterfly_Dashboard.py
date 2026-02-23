@@ -6,7 +6,7 @@ from datetime import datetime
 # -------------------------
 # WEATHER HELPER & CONSTANTS
 # -------------------------
-LATITUDE = 29.4678 
+LATITUDE = 29.4678
 LONGITUDE = -98.4750
 
 def fetch_weather_data(lat, lon, start_date, end_date):
@@ -38,7 +38,10 @@ def fetch_weather_data(lat, lon, start_date, end_date):
 
 def main():
 
-    st.set_page_config(page_title="Nature Notes eBird Observations Dashboard for Headwaters at Incarnate Word", layout="wide")
+    # FIXED: Removed the extra ) that was hanging on the next line
+    st.set_page_config(
+        page_title="Nature Notes eBird Observations Dashboard for Headwaters at Incarnate Word", 
+        layout="wide"
     )
 
     # -------------------------
@@ -130,7 +133,6 @@ def main():
             weather_a = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_a, selected_checklist_a)
             weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
 
-            # Dictionary to map technical names to your preferred labels
             weather_labels = {
                 "temp_max": "Max Temp",
                 "temp_min": "Min Temp",
@@ -144,7 +146,6 @@ def main():
                 
                 st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_val_a:.2f}°F, Min: {min_temp_val_a:.2f}°F, Precip: {precip_val_a:.2f} in")
                 
-                # Format and rename columns for display
                 weather_display_a = weather_a.copy()
                 weather_display_a["Date"] = weather_display_a["Date"].dt.strftime("%Y-%m-%d")
                 weather_display_a = weather_display_a.rename(columns=weather_labels)
@@ -158,7 +159,6 @@ def main():
                 
                 st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_val_b:.2f}°F, Min: {min_temp_val_b:.2f}°F, Precip: {precip_val_b:.2f} in")
                 
-                # Format and rename columns for display
                 weather_display_b = weather_b.copy()
                 weather_display_b["Date"] = weather_display_b["Date"].dt.strftime("%Y-%m-%d")
                 weather_display_b = weather_display_b.rename(columns=weather_labels)
