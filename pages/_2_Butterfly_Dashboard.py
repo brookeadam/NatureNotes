@@ -108,7 +108,6 @@ def main():
             df_a = historical_df[historical_df["DATE"] == date_a]
             df_b = historical_df[historical_df["DATE"] == date_b]
 
-            # Custom labels as requested
             col_label_a = "2025-07-10"
             col_label_b = "2025-10-15"
 
@@ -116,8 +115,6 @@ def main():
             grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame(col_label_b)
 
             comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
-            
-            # Difference calculation: October minus July
             comparison["Difference"] = comparison[col_label_b] - comparison[col_label_a]
 
             st.subheader("Species Comparison")
@@ -135,22 +132,39 @@ def main():
             weather_a = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_a, selected_checklist_a)
             weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
 
+            # Dictionary to map technical names to your preferred labels
+            weather_labels = {
+                "temp_max": "Max Temp",
+                "temp_min": "Min Temp",
+                "precipitation": "Precipitation"
+            }
+
             if not weather_a.empty:
-                max_temp_a = weather_a["Max Temp"].max()
-                min_temp_a = weather_a["Min Temp"].min()
-                st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_a}°F, Min: {min_temp_a}°F")
+                max_temp_val_a = weather_a["temp_max"].max()
+                min_temp_val_a = weather_a["temp_min"].min()
+                precip_val_a = weather_a["precipitation"].sum()
                 
+                st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_val_a:.2f}°F, Min: {min_temp_val_a:.2f}°F, Precip: {precip_val_a:.2f} in")
+                
+                # Format and rename columns for display
                 weather_display_a = weather_a.copy()
                 weather_display_a["Date"] = weather_display_a["Date"].dt.strftime("%Y-%m-%d")
+                weather_display_a = weather_display_a.rename(columns=weather_labels)
+                
                 st.dataframe(weather_display_a, use_container_width=True, hide_index=True)
 
             if not weather_b.empty:
-                max_temp_b = weather_b["Max Temp"].max()
-                min_temp_b = weather_b["Min Temp"].min()
-                st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_b}°F, Min: {min_temp_b}°F")
+                max_temp_val_b = weather_b["temp_max"].max()
+                min_temp_val_b = weather_b["temp_min"].min()
+                precip_val_b = weather_b["precipitation"].sum()
                 
+                st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_val_b:.2f}°F, Min: {min_temp_val_b:.2f}°F, Precip: {precip_val_b:.2f} in")
+                
+                # Format and rename columns for display
                 weather_display_b = weather_b.copy()
                 weather_display_b["Date"] = weather_display_b["Date"].dt.strftime("%Y-%m-%d")
+                weather_display_b = weather_display_b.rename(columns=weather_labels)
+                
                 st.dataframe(weather_display_b, use_container_width=True, hide_index=True)
 
     # === Footer ===
