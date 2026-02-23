@@ -91,7 +91,7 @@ def main():
 
     st.header("Weather Comparison")
 
-    unique_dates = sorted(historical_df["DATE"].unique())
+    unique_dates = sorted(historical_df["DATE"].dt.strftime("%Y-%m-%d").unique())
 
     if len(unique_dates) == 2:
 
