@@ -88,16 +88,45 @@ def main():
     # -------------------------
     # WEATHER SECTION
     # -------------------------
-    
-    st.header("Weather Data")
-    
-    weather_date = st.date_input("Select Date for Weather")
-    
-    if weather_date:
-        formatted_date = weather_date.strftime("%Y-%m-%d")
-    
-        # Example placeholder — replace with your weather API call
-        st.write(f"Weather data pull for {formatted_date} goes here.")
+
+    st.header("Weather Comparison")
+
+    unique_dates = sorted(historical_df["DATE"].unique())
+
+    if len(unique_dates) == 2:
+
+        date1 = datetime.strptime(unique_dates[0], "%Y-%m-%d")
+        date2 = datetime.strptime(unique_dates[1], "%Y-%m-%d")
+
+        # ---- Replace this with your actual weather API call ----
+        # Example placeholder weather values
+        weather_data = {
+            unique_dates[0]: {"temp": 92, "conditions": "Partly Cloudy"},
+            unique_dates[1]: {"temp": 88, "conditions": "Sunny"},
+        }
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(unique_dates[0])
+            st.metric("Temperature (°F)", weather_data[unique_dates[0]]["temp"])
+            st.write(weather_data[unique_dates[0]]["conditions"])
+
+        with col2:
+            st.subheader(unique_dates[1])
+            st.metric("Temperature (°F)", weather_data[unique_dates[1]]["temp"])
+            st.write(weather_data[unique_dates[1]]["conditions"])
+
+        temp_difference = (
+            weather_data[unique_dates[1]]["temp"]
+            - weather_data[unique_dates[0]]["temp"]
+        )
+
+        st.subheader("Temperature Difference")
+        st.metric("Δ Temperature (°F)", temp_difference)
+
+    else:
+        st.warning("Weather comparison requires exactly two survey dates.")
 
     # === Footer ===
     st.markdown("---")
