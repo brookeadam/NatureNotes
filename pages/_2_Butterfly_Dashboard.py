@@ -95,44 +95,71 @@ def main():
     # WEATHER SECTION
     # -------------------------
 
-    st.header("Weather Comparison")
+            st.header("🌡️ Weather Comparison 🌡️")
+            weather_a = fetch_weather_data(LATITUDE, LONGITUDE, date_a.date(), date_a.date())
+            weather_b = fetch_weather_data(LATITUDE, LONGITUDE, date_b.date(), date_b.date())
+            
+            if not weather_a.empty:
+                max_temp_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
+                min_temp_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
+                max_temp_a = max_temp_row_a["temp_max"]
+                max_temp_date_a = max_temp_row_a["Date"].strftime("%Y-%m-%d")
+                min_temp_a = min_temp_row_a["temp_min"]
+                min_temp_date_a = min_temp_row_a["Date"].strftime("%Y-%m-%d")
+                total_precip_a = weather_a['precipitation'].sum()
+                st.write(f"**Weather Summary: Checklist A ({selected_checklist_a}):** Max Temp: {max_temp_a:.2f}°F on {max_temp_date_a}, Min Temp: {min_temp_a:.2f}°F on {min_temp_date_a}, Total Precip: {total_precip_a:.4f} in")
+                
+                renamed_a = weather_a.copy()
+                renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
+                renamed_a = renamed_a.rename(columns={
+                    "temp_max": "Max Temp °F",
+                    "temp_min": "Min Temp °F",
+                    "precipitation": "Total Precip in"
+                })
+                st.dataframe(
+                    renamed_a.style.set_properties(**{'text-align': 'left'}).format(
+                        {
+                            'Max Temp °F': '{:.2f}',
+                            'Min Temp °F': '{:.2f}',
+                            'Total Precip in': '{:.4f}'
+                        }
+                    ),
+                    use_container_width=True
+                )
+            else:
+                st.info(f"No weather data available for Checklist A ({selected_checklist_a}).")
+                
+            if not weather_b.empty:
+                max_temp_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
+                min_temp_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
+                max_temp_b = max_temp_row_b["temp_max"]
+                max_temp_date_b = max_temp_row_b["Date"].strftime("%Y-%m-%d")
+                min_temp_b = min_temp_row_b["temp_min"]
+                min_temp_date_b = min_temp_row_b["Date"].strftime("%Y-%m-%d")
+                total_precip_b = weather_b['precipitation'].sum()
+                st.write(f"**Weather Summary: Checklist B ({selected_checklist_b}):** Max Temp: {max_temp_b:.2f}°F on {max_temp_date_b}, Min Temp: {min_temp_b:.2f}°F on {min_temp_date_b}, Total Precip: {total_precip_b:.4f} in")
+                
+                renamed_b = weather_b.copy()
+                renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
+                renamed_b = renamed_b.rename(columns={
+                    "temp_max": "Max Temp °F",
+                    "temp_min": "Min Temp °F",
+                    "precipitation": "Total Precip in"
+                })
+                st.dataframe(
+                    renamed_b.style.set_properties(**{'text-align': 'left'}).format(
+                        {
+                            'Max Temp °F': '{:.2f}',
+                            'Min Temp °F': '{:.2f}',
+                            'Total Precip in': '{:.4f}'
+                        }
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info(f"No weather data available for Checklist B ({selected_checklist_b}).")
 
-    unique_dates = sorted(historical_df["DATE"].dt.strftime("%Y-%m-%d").unique())
-
-    if len(unique_dates) == 2:
-
-        date1 = datetime.strptime(unique_dates[0], "%Y-%m-%d")
-        date2 = datetime.strptime(unique_dates[1], "%Y-%m-%d")
-
-        # ---- Replace this with your actual weather API call ----
-        # Example placeholder weather values
-        weather_data = {
-            unique_dates[0]: {"temp": 92, "conditions": "Partly Cloudy"},
-            unique_dates[1]: {"temp": 88, "conditions": "Sunny"},
-        }
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader(unique_dates[0])
-            st.metric("Temperature (°F)", weather_data[unique_dates[0]]["temp"])
-            st.write(weather_data[unique_dates[0]]["conditions"])
-
-        with col2:
-            st.subheader(unique_dates[1])
-            st.metric("Temperature (°F)", weather_data[unique_dates[1]]["temp"])
-            st.write(weather_data[unique_dates[1]]["conditions"])
-
-        temp_difference = (
-            weather_data[unique_dates[1]]["temp"]
-            - weather_data[unique_dates[0]]["temp"]
-        )
-
-        st.subheader("Temperature Difference")
-        st.metric("Δ Temperature (°F)", temp_difference)
-
-    else:
-        st.warning("Weather comparison requires exactly two survey dates.")
 
     # === Footer ===
     st.markdown("---")
