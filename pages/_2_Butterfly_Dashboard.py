@@ -38,11 +38,8 @@ def fetch_weather_data(lat, lon, start_date, end_date):
 
 def main():
 
-    # FIXED: Removed the extra ) that was hanging on the next line
-    st.set_page_config(
-        page_title="Nature Notes eBird Observations Dashboard for Headwaters at Incarnate Word", 
-        layout="wide"
-    )
+    # EXACT TITLE AS REQUESTED
+    st.set_page_config(page_title="Nature Notes Butterfly Observations Dashboard for Headwaters at Incarnate Word", layout="wide")
 
     # -------------------------
     # LOAD HISTORICAL DATA
@@ -109,6 +106,7 @@ def main():
             df_a = historical_df[historical_df["DATE"] == date_a]
             df_b = historical_df[historical_df["DATE"] == date_b]
 
+            # CUSTOM DATE LABELS
             col_label_a = "2025-07-10"
             col_label_b = "2025-10-15"
 
@@ -133,6 +131,7 @@ def main():
             weather_a = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_a, selected_checklist_a)
             weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
 
+            # Map to your requested clean labels
             weather_labels = {
                 "temp_max": "Max Temp",
                 "temp_min": "Min Temp",
@@ -140,39 +139,25 @@ def main():
             }
 
             if not weather_a.empty:
-                max_temp_val_a = weather_a["temp_max"].max()
-                min_temp_val_a = weather_a["temp_min"].min()
-                precip_val_a = weather_a["precipitation"].sum()
+                max_v_a = weather_a["temp_max"].max()
+                min_v_a = weather_a["temp_min"].min()
+                prec_v_a = weather_a["precipitation"].sum()
                 
-                st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_val_a:.2f}°F, Min: {min_temp_val_a:.2f}°F, Precip: {precip_val_a:.2f} in")
+                st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_v_a:.2f}°F, Min: {min_v_a:.2f}°F, Precip: {prec_v_a:.2f} in")
                 
                 weather_display_a = weather_a.copy()
                 weather_display_a["Date"] = weather_display_a["Date"].dt.strftime("%Y-%m-%d")
                 weather_display_a = weather_display_a.rename(columns=weather_labels)
-                
                 st.dataframe(weather_display_a, use_container_width=True, hide_index=True)
 
             if not weather_b.empty:
-                max_temp_val_b = weather_b["temp_max"].max()
-                min_temp_val_b = weather_b["temp_min"].min()
-                precip_val_b = weather_b["precipitation"].sum()
+                max_v_b = weather_b["temp_max"].max()
+                min_v_b = weather_b["temp_min"].min()
+                prec_v_b = weather_b["precipitation"].sum()
                 
-                st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_val_b:.2f}°F, Min: {min_temp_val_b:.2f}°F, Precip: {precip_val_b:.2f} in")
+                st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_v_b:.2f}°F, Min: {min_v_b:.2f}°F, Precip: {prec_v_b:.2f} in")
                 
                 weather_display_b = weather_b.copy()
                 weather_display_b["Date"] = weather_display_b["Date"].dt.strftime("%Y-%m-%d")
                 weather_display_b = weather_display_b.rename(columns=weather_labels)
-                
-                st.dataframe(weather_display_b, use_container_width=True, hide_index=True)
-
-    # === Footer ===
-    st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: gray;'>"
-        "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-if __name__ == "__main__":
-    main()
+                st.dataframe(weather_display_b, use_container_width=True,
