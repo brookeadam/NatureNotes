@@ -95,8 +95,8 @@ def main():
         if len(unique_dates) < 2:
             st.warning("This dashboard is designed for at least two survey dates.")
         else:
-            date_a = 2025-07-10
-            date_b = 2025-10-15
+            date_a = unique_dates[0]
+            date_b = unique_dates[1]
             
             selected_checklist_a = pd.to_datetime(date_a).date()
             selected_checklist_b = pd.to_datetime(date_b).date()
@@ -108,11 +108,17 @@ def main():
             df_a = historical_df[historical_df["DATE"] == date_a]
             df_b = historical_df[historical_df["DATE"] == date_b]
 
-            grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame("July 10, 2025")
-            grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("October 15, 2025")
+            # Custom labels as requested
+            col_label_a = "2025-07-10"
+            col_label_b = "2025-10-15"
+
+            grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame(col_label_a)
+            grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame(col_label_b)
 
             comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
-            comparison["Difference"] = comparison["July 10, 2025"] - comparison["October 15, 2025"]
+            
+            # Difference calculation: October minus July
+            comparison["Difference"] = comparison[col_label_b] - comparison[col_label_a]
 
             st.subheader("Species Comparison")
             st.dataframe(
@@ -134,7 +140,6 @@ def main():
                 min_temp_a = weather_a["temp_min"].min()
                 st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_a}°F, Min: {min_temp_a}°F")
                 
-                # Format weather date for display
                 weather_display_a = weather_a.copy()
                 weather_display_a["Date"] = weather_display_a["Date"].dt.strftime("%Y-%m-%d")
                 st.dataframe(weather_display_a, use_container_width=True, hide_index=True)
@@ -144,7 +149,6 @@ def main():
                 min_temp_b = weather_b["temp_min"].min()
                 st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_b}°F, Min: {min_temp_b}°F")
                 
-                # Format weather date for display
                 weather_display_b = weather_b.copy()
                 weather_display_b["Date"] = weather_display_b["Date"].dt.strftime("%Y-%m-%d")
                 st.dataframe(weather_display_b, use_container_width=True, hide_index=True)
