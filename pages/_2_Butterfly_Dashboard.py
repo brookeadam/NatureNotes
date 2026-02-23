@@ -95,8 +95,8 @@ def main():
         if len(unique_dates) < 2:
             st.warning("This dashboard is designed for at least two survey dates.")
         else:
-            date_a = unique_dates[0]
-            date_b = unique_dates[1]
+            date_a = 2025-07-10
+            date_b = 2025-10-15
             
             selected_checklist_a = pd.to_datetime(date_a).date()
             selected_checklist_b = pd.to_datetime(date_b).date()
