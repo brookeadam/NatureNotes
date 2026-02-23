@@ -108,11 +108,11 @@ def main():
             df_a = historical_df[historical_df["DATE"] == date_a]
             df_b = historical_df[historical_df["DATE"] == date_b]
 
-            grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date A")
-            grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date B")
+            grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame("July 10, 2025")
+            grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("October 15, 2025")
 
             comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
-            comparison["Difference"] = comparison["Date B"] - comparison["Date A"]
+            comparison["Difference"] = comparison["July 10, 2025"] - comparison["October 15, 2025"]
 
             st.subheader("Species Comparison")
             st.dataframe(
