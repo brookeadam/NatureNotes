@@ -4,7 +4,14 @@ import requests
 from datetime import datetime
 
 def main():
-    st.title("San Antonio Butterfly Observation Dashboard 🦋")
+
+    st.set_page_config(
+    page_title="NatureNotes",
+    page_icon="🌿",
+    layout="wide"
+    )
+    
+    st.title("Nature Notes Butterfly Observation Dashboard 🦋")
 
     # -------------------------
     # LOAD HISTORICAL DATA
