@@ -46,41 +46,43 @@ def main():
         )
     
     # -------------------------
-    # UPLOAD NEW LIST
+    # TWO-DATE COMPARISON
     # -------------------------
     
-    st.header("Compare New Butterfly List")
+    st.header("Date Comparison")
     
-    uploaded_file = st.file_uploader("Upload New Butterfly CSV", type=["csv"])
+    historical_df["DATE"] = pd.to_datetime(historical_df["DATE"])
     
-    if uploaded_file:
-        new_df = pd.read_csv(uploaded_file)
-        new_df.columns = new_df.columns.str.strip().str.upper()
+    unique_dates = sorted(historical_df["DATE"].unique())
     
-        if not all(col in new_df.columns for col in required_cols):
-            st.error("Uploaded file missing required columns.")
-        else:
+    if len(unique_dates) != 2:
+        st.warning("This dashboard is designed for exactly two survey dates.")
+    else:
     
-            comparison = (
-                historical_df.groupby("COMMON NAME")["COUNT"].sum()
-                .to_frame("Historical")
-                .join(
-                    new_df.groupby("COMMON NAME")["COUNT"].sum()
-                    .to_frame("New"),
-                    how="outer"
-                )
-                .fillna(0)
-            )
+        date_a = unique_dates[0]
+        date_b = unique_dates[1]
     
-            comparison["Difference"] = comparison["New"] - comparison["Historical"]
+        st.subheader("Survey Dates Compared")
+        st.write(f"Date A: {pd.to_datetime(date_a).date()}")
+        st.write(f"Date B: {pd.to_datetime(date_b).date()}")
     
-            st.subheader("Species Comparison")
+        df_a = historical_df[historical_df["DATE"] == date_a]
+        df_b = historical_df[historical_df["DATE"] == date_b]
     
-            st.dataframe(
-                comparison.sort_values("Difference", ascending=False),
-                use_container_width=True,
-                hide_index=True
-            )
+        grouped_a = df_a.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date A")
+        grouped_b = df_b.groupby("COMMON NAME")["COUNT"].sum().to_frame("Date B")
+    
+        comparison = grouped_a.join(grouped_b, how="outer").fillna(0)
+    
+        comparison["Difference"] = comparison["Date B"] - comparison["Date A"]
+    
+        st.subheader("Species Comparison")
+    
+        st.dataframe(
+            comparison.sort_values("Difference", ascending=False),
+            use_container_width=True,
+            hide_index=True
+        )
     
     # -------------------------
     # WEATHER SECTION
