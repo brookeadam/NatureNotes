@@ -38,9 +38,7 @@ def fetch_weather_data(lat, lon, start_date, end_date):
 
 def main():
 
-    st.set_page_config(
-        page_title="Nature Notes Butterfly Observations Dashboard",
-        layout="wide"
+    st.set_page_config(page_title="Nature Notes eBird Observations Dashboard for Headwaters at Incarnate Word", layout="wide")
     )
 
     # -------------------------
