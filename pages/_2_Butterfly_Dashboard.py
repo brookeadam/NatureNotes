@@ -136,8 +136,8 @@ def main():
             weather_b = fetch_weather_data(LATITUDE, LONGITUDE, selected_checklist_b, selected_checklist_b)
 
             if not weather_a.empty:
-                max_temp_a = weather_a["temp_max"].max()
-                min_temp_a = weather_a["temp_min"].min()
+                max_temp_a = weather_a["Max Temp"].max()
+                min_temp_a = weather_a["Min Temp"].min()
                 st.write(f"**Weather Summary ({selected_checklist_a}):** Max: {max_temp_a}°F, Min: {min_temp_a}°F")
                 
                 weather_display_a = weather_a.copy()
@@ -145,8 +145,8 @@ def main():
                 st.dataframe(weather_display_a, use_container_width=True, hide_index=True)
 
             if not weather_b.empty:
-                max_temp_b = weather_b["temp_max"].max()
-                min_temp_b = weather_b["temp_min"].min()
+                max_temp_b = weather_b["Max Temp"].max()
+                min_temp_b = weather_b["Min Temp"].min()
                 st.write(f"**Weather Summary ({selected_checklist_b}):** Max: {max_temp_b}°F, Min: {min_temp_b}°F")
                 
                 weather_display_b = weather_b.copy()
