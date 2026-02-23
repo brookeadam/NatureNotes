@@ -44,11 +44,3 @@ DATE,COMMON NAME,SCIENTIFIC NAME,COUNT
 10/15/2025,Western Pygmy-Blue,Brephidium exilis,2
 7/10/2025,White-striped Longtail,Chioides albofasciatus,50
 10/15/2025,White-striped Longtail,Chioides albofasciatus,50
-unique_dates = (
-    historical_df["DATE"]
-    .dropna()
-    .dt.strftime("%Y-%m-%d")
-    .unique()
-)
-
-unique_dates = sorted(unique_dates)
