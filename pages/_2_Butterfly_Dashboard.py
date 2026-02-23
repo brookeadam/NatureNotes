@@ -14,6 +14,12 @@ def main():
     historical_df = pd.read_csv("san_antonio_butterfly_counts_consolidated_2025.csv")
     
     historical_df.columns = historical_df.columns.str.strip().str.upper()
+
+    historical_df["DATE"] = pd.to_datetime(
+    historical_df["DATE"],
+    errors="coerce",
+    infer_datetime_format=True
+)
     
     required_cols = ["COMMON NAME", "SCIENTIFIC NAME", "COUNT", "DATE"]
     
