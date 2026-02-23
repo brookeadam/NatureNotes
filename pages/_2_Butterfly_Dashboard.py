@@ -3,6 +3,38 @@ import pandas as pd
 import requests
 from datetime import datetime
 
+# -------------------------
+# NEW: WEATHER HELPER & CONSTANTS
+# -------------------------
+LATITUDE = 29.4678  # Headwaters at Incarnate Word
+LONGITUDE = -98.4750
+
+def fetch_weather_data(lat, lon, start_date, end_date):
+    url = "https://archive-api.open-meteo.com/v1/archive"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "start_date": start_date.strftime('%Y-%m-%d'),
+        "end_date": end_date.strftime('%Y-%m-%d'),
+        "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
+        "temperature_unit": "fahrenheit",
+        "precipitation_unit": "inch",
+        "timezone": "America/Chicago"
+    }
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            daily = data.get("daily", {})
+            return pd.DataFrame({
+                "Date": pd.to_datetime(daily.get("time", [])),
+                "temp_max": daily.get("temperature_2m_max", []),
+                "temp_min": daily.get("temperature_2m_min", []),
+                "precipitation": daily.get("precipitation_sum", [])
+            })
+    except:
+        pass
+    return pd.DataFrame()
 
 def main():
 
@@ -21,8 +53,7 @@ def main():
 
     historical_df["DATE"] = pd.to_datetime(
         historical_df["DATE"],
-        errors="coerce",
-        infer_datetime_format=True
+        errors="coerce"
     )
 
     required_cols = ["COMMON NAME", "SCIENTIFIC NAME", "COUNT", "DATE"]
@@ -48,7 +79,8 @@ def main():
         col1, col2, col3 = st.columns(3)
         col1.metric("Total Species", total_species)
         col2.metric("Total Individuals", total_individuals)
-        col3.metric("Most Observed", most_common.index[0])
+        if not most_common.empty:
+            col3.metric("Most Observed", most_common.index[0])
 
         st.dataframe(
             historical_df.sort_values("DATE"),
@@ -62,16 +94,18 @@ def main():
 
     st.header("Date Comparison")
 
-    historical_df["DATE"] = pd.to_datetime(historical_df["DATE"])
+    unique_dates = sorted(historical_df["DATE"].dropna().unique())
 
-    unique_dates = sorted(historical_df["DATE"].unique())
-
-    if len(unique_dates) != 2:
-        st.warning("This dashboard is designed for exactly two survey dates.")
+    if len(unique_dates) < 2:
+        st.warning("This dashboard is designed for at least two survey dates.")
     else:
 
         date_a = unique_dates[0]
         date_b = unique_dates[1]
+        
+        # Defining these so your weather labels don't cause NameErrors
+        selected_checklist_a = date_a.date()
+        selected_checklist_b = date_b.date()
 
         st.subheader("Survey Dates Compared")
         st.write(f"Date A: {pd.to_datetime(date_a).date()}")
@@ -91,8 +125,7 @@ def main():
 
         st.dataframe(
             comparison.sort_values("Difference", ascending=False),
-            use_container_width=True,
-            hide_index=True
+            use_container_width=True
         )
 
         # -------------------------
@@ -213,3 +246,6 @@ def main():
         "</div>",
         unsafe_allow_html=True,
     )
+
+if __name__ == "__main__":
+    main()
