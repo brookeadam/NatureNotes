@@ -75,32 +75,47 @@ def main():
         use_container_width=True
     )
 
-    # ============================================================
-    # Filter by Date Range
-    # ============================================================
+ # ============================================================
+# Filter by Date Range + Location
+# ============================================================
 
-    st.subheader("⏱️ Filter by Date Range")
+st.subheader("⏱️ Filter by Date Range")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        start_date = st.date_input("Start Date", MIN_DATE, min_value=MIN_DATE, max_value=MAX_DATE)
-    with col2:
-        end_date = st.date_input("End Date", MAX_DATE, min_value=MIN_DATE, max_value=MAX_DATE)
+col1, col2 = st.columns(2)
+with col1:
+    start_date = st.date_input("Start Date", MIN_DATE, min_value=MIN_DATE, max_value=MAX_DATE)
+with col2:
+    end_date = st.date_input("End Date", MAX_DATE, min_value=MIN_DATE, max_value=MAX_DATE)
 
-    filtered = df[(df["Date"] >= pd.to_datetime(start_date)) &
-                  (df["Date"] <= pd.to_datetime(end_date))].copy()
+# === Location Filter ===
+st.subheader("🏞️ Filter by Location")
 
-    # Sorting controls
-    sort_col = st.selectbox("Sort by", ["Date", "Location", "Category", "Common Name"])
-    sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
+locations = sorted(df["Location"].dropna().unique())
+selected_locations = st.multiselect(
+    "Choose one or more locations:",
+    options=locations,
+    default=locations
+)
 
-    filtered = filtered.sort_values(sort_col, ascending=(sort_order == "Ascending"))
+# === Apply Filters ===
+filtered = df[
+    (df["Date"] >= pd.to_datetime(start_date)) &
+    (df["Date"] <= pd.to_datetime(end_date)) &
+    (df["Location"].isin(selected_locations))
+].copy()
 
-    st.dataframe(
-        filtered[["Date", "Location", "Category", "Common Name", "Scientific Name", "Status", "Notes", "Wedge"]],
-        hide_index=True,
-        use_container_width=True
-    )
+# === Sorting Controls ===
+sort_col = st.selectbox("Sort by", ["Date", "Location", "Category", "Common Name"])
+sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
+
+filtered = filtered.sort_values(sort_col, ascending=(sort_order == "Ascending"))
+
+# === Display Table ===
+st.dataframe(
+    filtered[["Date", "Location", "Category", "Common Name", "Scientific Name", "Status", "Notes", "Wedge"]],
+    hide_index=True,
+    use_container_width=True
+)
 
     # ============================================================
     # Compare Two Dates
