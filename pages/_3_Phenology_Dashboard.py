@@ -1,4 +1,51 @@
-def main():
+import streamlit as st
+import pandas as pd
+import datetime
+
+# ============================================================
+# Load & Clean Phenology Data
+# ============================================================
+
+@st.cache_data
+def load_pheno_data():
+    df = pd.read_csv("historical_pheno_data.csv", encoding="utf-8", on_bad_lines="skip")
+
+    # Normalize column names
+    df.columns = [c.strip().upper() for c in df.columns]
+
+    # Expected columns
+    required = ["OBSERVATIONDATETIME", "LOCATION", "WEDGE", "CATEGORY",
+                "COMMONNAME", "SCIENTIFICNAME", "STATUS", "NOTES"]
+
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        st.error(f"Missing required columns: {missing}")
+        return pd.DataFrame()
+
+    # Clean & convert
+    df["OBSERVATIONDATETIME"] = pd.to_datetime(df["OBSERVATIONDATETIME"], errors="coerce")
+    df = df.dropna(subset=["OBSERVATIONDATETIME"])
+
+    df = df.rename(columns={
+        "OBSERVATIONDATETIME": "Date",
+        "COMMONNAME": "Common Name",
+        "SCIENTIFICNAME": "Scientific Name",
+        "CATEGORY": "Category",
+        "LOCATION": "Location",
+        "STATUS": "Status",
+        "NOTES": "Notes",
+        "WEDGE": "Wedge"
+    })
+
+    return df
+
+
+# ============================================================
+# PAGE FUNCTION
+# ============================================================
+
+def app():
+
     st.set_page_config(page_title="Headwaters Phenology Dashboard", layout="wide")
 
     st.markdown("<h1 style='text-align:center;'>🌿 Headwaters Phenology Dashboard 🌿</h1>", unsafe_allow_html=True)
@@ -100,7 +147,7 @@ def main():
         dfA = df[df["Date"].dt.date == dateA]
         dfB = df[df["Date"].dt.date == dateB]
 
-        st.write(f"### 🐦 Comparison: {dateA} vs {dateB}")
+        st.write(f"### Comparison: {dateA} vs {dateB}")
 
         merged = pd.merge(
             dfA.groupby(["Category", "Common Name"]).size().reset_index(name="Count A"),
