@@ -20,7 +20,6 @@ def to_date(x):
         return x.date()
     if isinstance(x, datetime.date):
         return x
-    # pandas / numpy / other
     return pd.to_datetime(x).date()
 
 # ============================================================
@@ -41,18 +40,23 @@ def fetch_weather_data(lat, lon, start, end):
         "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_sum"],
         "timezone": "America/Chicago"
     }
+
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
         data = response.json()
-        return pd.DataFrame({
+
+        df = pd.DataFrame({
             "Date": pd.to_datetime(data.get("daily", {}).get("time", [])),
             "temp_max": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_max", [])],
             "temp_min": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_min", [])],
             "precipitation": [(p * 0.0393701) if p is not None else None for p in data.get("daily", {}).get("precipitation_sum", [])]
         })
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching weather data: {e}")
+
+        return df
+
+    except Exception as e:
+        st.error(f"Weather API error: {e}")
         return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
 
 # ============================================================
@@ -134,40 +138,29 @@ if not weather_latest.empty:
         "temp_min": "Min Temp °F",
         "precipitation": "Total Precip in"
     })
-    st.dataframe(
-        display_latest_weather[["Max Temp °F", "Min Temp °F", "Total Precip in"]],
-        hide_index=True
-    )
+    st.dataframe(display_latest_weather, hide_index=True)
 else:
     st.warning("No weather data available for the latest observation date.")
 
 # ============================================================
-# Filter by Date Range + Location + Category + Name Filters + Weather
+# Filter Section
 # ============================================================
 
 st.subheader("⏱️ Filter by Date Range")
 
 col1, col2 = st.columns(2)
 with col1:
-    start_date = st.date_input("Start Date", MIN_DATE, min_value=MIN_DATE, max_value=MAX_DATE)
+    start_date = st.date_input("Start Date", MIN_DATE)
 with col2:
-    end_date = st.date_input("End Date", MAX_DATE, min_value=MIN_DATE, max_value=MAX_DATE)
+    end_date = st.date_input("End Date", MAX_DATE)
 
 st.subheader("🏞️ Filter by Location")
 locations = sorted(df["Location"].dropna().unique())
-selected_locations = st.multiselect(
-    "Choose one or more locations:",
-    options=locations,
-    default=locations
-)
+selected_locations = st.multiselect("Choose locations:", locations, default=locations)
 
 st.subheader("🌱 Filter by Category")
 categories = sorted(df["Category"].dropna().unique())
-selected_categories = st.multiselect(
-    "Choose one or more categories:",
-    options=categories,
-    default=categories
-)
+selected_categories = st.multiselect("Choose categories:", categories, default=categories)
 
 st.subheader("🔍 Filter by Name")
 common_search = st.text_input("Search Common Name")
@@ -186,7 +179,7 @@ if common_search:
 if scientific_search:
     filtered = filtered[filtered["Scientific Name"].str.contains(scientific_search, case=False, na=False)]
 
-sort_col = st.selectbox("Sort by", ["Date", "Location", "Category", "Common Name"])
+sort_col = st.selectbox("Sort by", ["Date", "Location", "Category", "Common Name", "Scientific Name"])
 sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
 
 filtered = filtered.sort_values(sort_col, ascending=(sort_order == "Ascending"))
@@ -197,7 +190,11 @@ st.dataframe(
     use_container_width=True
 )
 
-st.subheader("🌡️ Weather Metrics for Filtered Range")
+# ============================================================
+# Weather for Filtered Range
+# ============================================================
+
+st.subheader("🌡️ Weather for Filtered Range")
 
 weather_range = fetch_weather_data(LATITUDE, LONGITUDE, start_date, end_date)
 weather_range = weather_range.dropna(subset=["temp_max", "temp_min"])
@@ -206,18 +203,11 @@ if not weather_range.empty:
     col1, col2 = st.columns(2)
     with col1:
         max_row = weather_range.loc[weather_range["temp_max"].idxmax()]
-        st.metric(
-            label=f"Max Temp (°F) on {max_row['Date'].date()}",
-            value=f"{max_row['temp_max']:.2f}"
-        )
+        st.metric(f"Max Temp (°F) on {max_row['Date'].date()}", f"{max_row['temp_max']:.2f}")
     with col2:
         min_row = weather_range.loc[weather_range["temp_min"].idxmin()]
-        st.metric(
-            label=f"Min Temp (°F) on {min_row['temp_min'].date() if hasattr(min_row['temp_min'], 'date') else min_row['Date'].date()}",
-            value=f"{min_row['temp_min']:.2f}"
-        )
+        st.metric(f"Min Temp (°F) on {min_row['Date'].date()}", f"{min_row['temp_min']:.2f}")
 
-    st.subheader("Daily Weather Data (Filtered Range)")
     display_weather = weather_range.copy()
     display_weather["Date"] = display_weather["Date"].dt.strftime("%Y-%m-%d")
     display_weather = display_weather.rename(columns={
@@ -225,22 +215,13 @@ if not weather_range.empty:
         "temp_min": "Min Temp °F",
         "precipitation": "Total Precip in"
     })
-    st.dataframe(
-        display_weather.style.set_properties(**{'text-align': 'left'}).format(
-            {
-                "Max Temp °F": "{:.2f}",
-                "Min Temp °F": "{:.2f}",
-                "Total Precip in": "{:.4f}"
-            }
-        ),
-        use_container_width=True,
-        hide_index=True
-    )
+
+    st.dataframe(display_weather, hide_index=True)
 else:
-    st.warning("No weather data available for the selected date range.")
+    st.warning("No weather data available for this range.")
 
 # ============================================================
-# Compare Two Dates + Weather (Respect Filters)
+# Compare Specific Dates (with filters + scientific name + sorting)
 # ============================================================
 
 st.markdown("---")
@@ -254,6 +235,9 @@ with colA:
 with colB:
     dateB = st.selectbox("Select Date B", unique_dates)
 
+sort_compare = st.selectbox("Sort comparison by", ["Category", "Common Name", "Scientific Name", "Location"])
+sort_compare_order = st.radio("Comparison order", ["Ascending", "Descending"], horizontal=True)
+
 if st.button("Compare Dates"):
     dfA = df[
         (df["Date"].dt.date == dateA) &
@@ -266,90 +250,31 @@ if st.button("Compare Dates"):
         (df["Category"].isin(selected_categories))
     ]
 
-    st.subheader("Phenology Comparison")
-    merged_pheno = pd.merge(
-        dfA.groupby(["Category", "Common Name"]).size().reset_index(name="Count A"),
-        dfB.groupby(["Category", "Common Name"]).size().reset_index(name="Count B"),
-        on=["Category", "Common Name"],
+    merged = pd.merge(
+        dfA.groupby(["Location", "Category", "Common Name", "Scientific Name"]).size().reset_index(name="Count A"),
+        dfB.groupby(["Location", "Category", "Common Name", "Scientific Name"]).size().reset_index(name="Count B"),
+        on=["Location", "Category", "Common Name", "Scientific Name"],
         how="outer"
     ).fillna(0)
-    merged_pheno["Difference"] = merged_pheno["Count B"] - merged_pheno["Count A"]
 
-    st.dataframe(
-        merged_pheno.sort_values("Difference", ascending=False),
-        hide_index=True,
-        use_container_width=True
-    )
+    merged["Difference"] = merged["Count B"] - merged["Count A"]
+    merged = merged.sort_values(sort_compare, ascending=(sort_compare_order == "Ascending"))
+
+    st.dataframe(merged, hide_index=True, use_container_width=True)
 
     st.subheader("🌡️ Weather Comparison")
 
     weather_a = fetch_weather_data(LATITUDE, LONGITUDE, dateA, dateA)
     weather_b = fetch_weather_data(LATITUDE, LONGITUDE, dateB, dateB)
 
-    if not weather_a.empty:
-        max_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
-        min_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
-        total_precip_a = weather_a["precipitation"].sum()
-        st.write(
-            f"**Weather Summary: Date A ({dateA}):** "
-            f"Max Temp: {max_row_a['temp_max']:.2f}°F, "
-            f"Min Temp: {min_row_a['temp_min']:.2f}°F, "
-            f"Total Precip: {total_precip_a:.4f} in"
-        )
-        disp_a = weather_a.copy()
-        disp_a["Date"] = disp_a["Date"].dt.strftime("%Y-%m-%d")
-        disp_a = disp_a.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(
-            disp_a.style.set_properties(**{'text-align': 'left'}).format(
-                {
-                    "Max Temp °F": "{:.2f}",
-                    "Min Temp °F": "{:.2f}",
-                    "Total Precip in": "{:.4f}"
-                }
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info(f"No weather data available for Date A ({dateA}).")
+    st.write("**Date A Weather**")
+    st.dataframe(weather_a, hide_index=True)
 
-    if not weather_b.empty:
-        max_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
-        min_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
-        total_precip_b = weather_b["precipitation"].sum()
-        st.write(
-            f"**Weather Summary: Date B ({dateB}):** "
-            f"Max Temp: {max_row_b['temp_max']:.2f}°F, "
-            f"Min Temp: {min_row_b['temp_min']:.2f}°F, "
-            f"Total Precip: {total_precip_b:.4f} in"
-        )
-        disp_b = weather_b.copy()
-        disp_b["Date"] = disp_b["Date"].dt.strftime("%Y-%m-%d")
-        disp_b = disp_b.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(
-            disp_b.style.set_properties(**{'text-align': 'left'}).format(
-                {
-                    "Max Temp °F": "{:.2f}",
-                    "Min Temp °F": "{:.2f}",
-                    "Total Precip in": "{:.4f}"
-                }
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info(f"No weather data available for Date B ({dateB}).")
+    st.write("**Date B Weather**")
+    st.dataframe(weather_b, hide_index=True)
 
 # ============================================================
-# Compare Two Date Ranges + Weather (Respect Filters)
+# Compare Two Date Ranges (with filters + scientific name + sorting)
 # ============================================================
 
 st.markdown("---")
@@ -362,6 +287,9 @@ with col1:
 with col2:
     r2_start = st.date_input("Range 2 Start", MIN_DATE, key="r2s")
     r2_end = st.date_input("Range 2 End", MAX_DATE, key="r2e")
+
+sort_range = st.selectbox("Sort range comparison by", ["Category", "Common Name", "Scientific Name", "Location"])
+sort_range_order = st.radio("Range comparison order", ["Ascending", "Descending"], horizontal=True)
 
 if st.button("Compare Ranges"):
     A = df[
@@ -377,86 +305,28 @@ if st.button("Compare Ranges"):
         (df["Category"].isin(selected_categories))
     ]
 
-    st.subheader("Phenology Range Comparison")
+    merged_ranges = pd.merge(
+        A.groupby(["Location", "Category", "Common Name", "Scientific Name"]).size().reset_index(name="Count A"),
+        B.groupby(["Location", "Category", "Common Name", "Scientific Name"]).size().reset_index(name="Count B"),
+        on=["Location", "Category", "Common Name", "Scientific Name"],
+        how="outer"
+    ).fillna(0)
 
-    tableA = A.groupby(["Category", "Common Name"]).size().reset_index(name="Count A")
-    tableB = B.groupby(["Category", "Common Name"]).size().reset_index(name="Count B")
-
-    merged_ranges = pd.merge(tableA, tableB, on=["Category", "Common Name"], how="outer").fillna(0)
     merged_ranges["Difference"] = merged_ranges["Count B"] - merged_ranges["Count A"]
+    merged_ranges = merged_ranges.sort_values(sort_range, ascending=(sort_range_order == "Ascending"))
 
-    st.dataframe(
-        merged_ranges.sort_values("Difference", ascending=False),
-        hide_index=True,
-        use_container_width=True
-    )
+    st.dataframe(merged_ranges, hide_index=True, use_container_width=True)
 
-    st.subheader("🌡️ Weather Trends (Ranges)")
+    st.subheader("🌡️ Weather Trends")
 
     weather_a = fetch_weather_data(LATITUDE, LONGITUDE, r1_start, r1_end)
     weather_b = fetch_weather_data(LATITUDE, LONGITUDE, r2_start, r2_end)
 
-    if not weather_a.empty:
-        max_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
-        min_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
-        total_precip_a = weather_a["precipitation"].sum()
-        st.write(
-            f"**Weather Summary: Range A ({r1_start}–{r1_end}):** "
-            f"Max Temp: {max_row_a['temp_max']:.2f}°F on {max_row_a['Date'].strftime('%Y-%m-%d')}, "
-            f"Min Temp: {min_row_a['temp_min']:.2f}°F on {min_row_a['Date'].strftime('%Y-%m-%d')}, "
-            f"Total Precip: {total_precip_a:.4f} in"
-        )
-        disp_a = weather_a.copy()
-        disp_a["Date"] = disp_a["Date"].dt.strftime("%Y-%m-%d")
-        disp_a = disp_a.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(
-            disp_a.style.set_properties(**{'text-align': 'left'}).format(
-                {
-                    "Max Temp °F": "{:.2f}",
-                    "Min Temp °F": "{:.2f}",
-                    "Total Precip in": "{:.4f}"
-                }
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info("No weather data for Range A.")
+    st.write("**Range A Weather**")
+    st.dataframe(weather_a, hide_index=True)
 
-    if not weather_b.empty:
-        max_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
-        min_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
-        total_precip_b = weather_b["precipitation"].sum()
-        st.write(
-            f"**Weather Summary: Range B ({r2_start}–{r2_end}):** "
-            f"Max Temp: {max_row_b['temp_max']:.2f}°F on {max_row_b['Date'].strftime('%Y-%m-%d')}, "
-            f"Min Temp: {min_row_b['temp_min']:.2f}°F on {min_row_b['Date'].strftime('%Y-%m-%d')}, "
-            f"Total Precip: {total_precip_b:.4f} in"
-        )
-        disp_b = weather_b.copy()
-        disp_b["Date"] = disp_b["Date"].dt.strftime("%Y-%m-%d")
-        disp_b = disp_b.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        st.dataframe(
-            disp_b.style.set_properties(**{'text-align': 'left'}).format(
-                {
-                    "Max Temp °F": "{:.2f}",
-                    "Min Temp °F": "{:.2f}",
-                    "Total Precip in": "{:.4f}"
-                }
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info("No weather data for Range B.")
+    st.write("**Range B Weather**")
+    st.dataframe(weather_b, hide_index=True)
 
 # ============================================================
 # Footer
