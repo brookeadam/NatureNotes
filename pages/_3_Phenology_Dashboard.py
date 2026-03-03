@@ -11,11 +11,27 @@ LATITUDE = 29.4689
 LONGITUDE = -98.4798
 
 # ============================================================
+# Helpers
+# ============================================================
+
+def to_date(x):
+    """Safely convert various date-like objects to a Python date."""
+    if isinstance(x, datetime.datetime):
+        return x.date()
+    if isinstance(x, datetime.date):
+        return x
+    # pandas / numpy / other
+    return pd.to_datetime(x).date()
+
+# ============================================================
 # Weather API
 # ============================================================
 
 @st.cache_data(ttl=3600)
 def fetch_weather_data(lat, lon, start, end):
+    start = to_date(start)
+    end = to_date(end)
+
     url = "https://archive-api.open-meteo.com/v1/archive"
     params = {
         "latitude": lat,
@@ -106,7 +122,7 @@ st.dataframe(
     use_container_width=True
 )
 
-weather_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
+weather_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date, latest_date)
 weather_latest = weather_latest.dropna(subset=["temp_max", "temp_min"])
 
 if not weather_latest.empty:
@@ -126,7 +142,7 @@ else:
     st.warning("No weather data available for the latest observation date.")
 
 # ============================================================
-# Filter by Date Range + Location + Category + Weather
+# Filter by Date Range + Location + Category + Name Filters + Weather
 # ============================================================
 
 st.subheader("⏱️ Filter by Date Range")
@@ -153,12 +169,22 @@ selected_categories = st.multiselect(
     default=categories
 )
 
+st.subheader("🔍 Filter by Name")
+common_search = st.text_input("Search Common Name")
+scientific_search = st.text_input("Search Scientific Name")
+
 filtered = df[
     (df["Date"] >= pd.to_datetime(start_date)) &
     (df["Date"] <= pd.to_datetime(end_date)) &
     (df["Location"].isin(selected_locations)) &
     (df["Category"].isin(selected_categories))
 ].copy()
+
+if common_search:
+    filtered = filtered[filtered["Common Name"].str.contains(common_search, case=False, na=False)]
+
+if scientific_search:
+    filtered = filtered[filtered["Scientific Name"].str.contains(scientific_search, case=False, na=False)]
 
 sort_col = st.selectbox("Sort by", ["Date", "Location", "Category", "Common Name"])
 sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
@@ -187,7 +213,7 @@ if not weather_range.empty:
     with col2:
         min_row = weather_range.loc[weather_range["temp_min"].idxmin()]
         st.metric(
-            label=f"Min Temp (°F) on {min_row['Date'].date()}",
+            label=f"Min Temp (°F) on {min_row['temp_min'].date() if hasattr(min_row['temp_min'], 'date') else min_row['Date'].date()}",
             value=f"{min_row['temp_min']:.2f}"
         )
 
@@ -214,7 +240,7 @@ else:
     st.warning("No weather data available for the selected date range.")
 
 # ============================================================
-# Compare Two Dates + Weather
+# Compare Two Dates + Weather (Respect Filters)
 # ============================================================
 
 st.markdown("---")
@@ -229,8 +255,16 @@ with colB:
     dateB = st.selectbox("Select Date B", unique_dates)
 
 if st.button("Compare Dates"):
-    dfA = df[df["Date"].dt.date == dateA]
-    dfB = df[df["Date"].dt.date == dateB]
+    dfA = df[
+        (df["Date"].dt.date == dateA) &
+        (df["Location"].isin(selected_locations)) &
+        (df["Category"].isin(selected_categories))
+    ]
+    dfB = df[
+        (df["Date"].dt.date == dateB) &
+        (df["Location"].isin(selected_locations)) &
+        (df["Category"].isin(selected_categories))
+    ]
 
     st.subheader("Phenology Comparison")
     merged_pheno = pd.merge(
@@ -315,7 +349,7 @@ if st.button("Compare Dates"):
         st.info(f"No weather data available for Date B ({dateB}).")
 
 # ============================================================
-# Compare Two Date Ranges + Weather
+# Compare Two Date Ranges + Weather (Respect Filters)
 # ============================================================
 
 st.markdown("---")
@@ -330,8 +364,18 @@ with col2:
     r2_end = st.date_input("Range 2 End", MAX_DATE, key="r2e")
 
 if st.button("Compare Ranges"):
-    A = df[(df["Date"] >= pd.to_datetime(r1_start)) & (df["Date"] <= pd.to_datetime(r1_end))]
-    B = df[(df["Date"] >= pd.to_datetime(r2_start)) & (df["Date"] <= pd.to_datetime(r2_end))]
+    A = df[
+        (df["Date"] >= pd.to_datetime(r1_start)) &
+        (df["Date"] <= pd.to_datetime(r1_end)) &
+        (df["Location"].isin(selected_locations)) &
+        (df["Category"].isin(selected_categories))
+    ]
+    B = df[
+        (df["Date"] >= pd.to_datetime(r2_start)) &
+        (df["Date"] <= pd.to_datetime(r2_end)) &
+        (df["Location"].isin(selected_locations)) &
+        (df["Category"].isin(selected_categories))
+    ]
 
     st.subheader("Phenology Range Comparison")
 
