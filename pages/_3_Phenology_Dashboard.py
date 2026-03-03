@@ -79,7 +79,7 @@ def main():
 # Filter by Date Range + Location
 # ============================================================
 
-st.subheader("⏱️ Filter by Date Range")
+st.subheader("⏱️ Filter by Date Range and Location")
 
 col1, col2 = st.columns(2)
 with col1:
