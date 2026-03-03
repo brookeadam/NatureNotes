@@ -75,11 +75,11 @@ def main():
         use_container_width=True
     )
 
- # ============================================================
-# Filter by Date Range + Location
+# ============================================================
+# Filter by Date Range + Location + Category
 # ============================================================
 
-st.subheader("⏱️ Filter by Date Range and Location")
+st.subheader("⏱️ Filter by Date Range")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -97,11 +97,22 @@ selected_locations = st.multiselect(
     default=locations
 )
 
+# === Category Filter ===
+st.subheader("🌱 Filter by Category")
+
+categories = sorted(df["Category"].dropna().unique())
+selected_categories = st.multiselect(
+    "Choose one or more categories:",
+    options=categories,
+    default=categories
+)
+
 # === Apply Filters ===
 filtered = df[
     (df["Date"] >= pd.to_datetime(start_date)) &
     (df["Date"] <= pd.to_datetime(end_date)) &
-    (df["Location"].isin(selected_locations))
+    (df["Location"].isin(selected_locations)) &
+    (df["Category"].isin(selected_categories))
 ].copy()
 
 # === Sorting Controls ===
