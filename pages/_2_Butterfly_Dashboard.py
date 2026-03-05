@@ -37,8 +37,6 @@ def fetch_weather_data(lat, lon, date_obj):
     return pd.DataFrame()
 
 def main():
-    # === PAGE CONFIG ===
-    st.set_page_config(page_title="Nature Notes eBird Observations Dashboard for Headwaters at Incarnate Word", layout="wide")
 
     # === HEADER (Centered HTML) ===
     st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
