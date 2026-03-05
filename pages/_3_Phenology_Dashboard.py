@@ -221,7 +221,7 @@ else:
     st.warning("No weather data available for this range.")
 
 # ============================================================
-# Compare Specific Dates (with filters + scientific name + sorting)
+# Compare Specific Dates
 # ============================================================
 
 st.markdown("---")
@@ -268,13 +268,27 @@ if st.button("Compare Dates"):
     weather_b = fetch_weather_data(LATITUDE, LONGITUDE, dateB, dateB)
 
     st.write("**Date A Weather**")
-    st.dataframe(weather_a, hide_index=True)
+    display_a = weather_a.copy()
+    display_a["Date"] = display_a["Date"].dt.strftime("%Y-%m-%d")
+    display_a = display_a.rename(columns={
+        "temp_max": "Max Temp °F",
+        "temp_min": "Min Temp °F",
+        "precipitation": "Total Precip in"
+    })
+    st.dataframe(display_a, hide_index=True)
 
     st.write("**Date B Weather**")
-    st.dataframe(weather_b, hide_index=True)
+    display_b = weather_b.copy()
+    display_b["Date"] = display_b["Date"].dt.strftime("%Y-%m-%d")
+    display_b = display_b.rename(columns={
+        "temp_max": "Max Temp °F",
+        "temp_min": "Min Temp °F",
+        "precipitation": "Total Precip in"
+    })
+    st.dataframe(display_b, hide_index=True)
 
 # ============================================================
-# Compare Two Date Ranges (with filters + scientific name + sorting)
+# Compare Two Date Ranges
 # ============================================================
 
 st.markdown("---")
@@ -323,10 +337,24 @@ if st.button("Compare Ranges"):
     weather_b = fetch_weather_data(LATITUDE, LONGITUDE, r2_start, r2_end)
 
     st.write("**Range A Weather**")
-    st.dataframe(weather_a, hide_index=True)
+    display_a = weather_a.copy()
+    display_a["Date"] = display_a["Date"].dt.strftime("%Y-%m-%d")
+    display_a = display_a.rename(columns={
+        "temp_max": "Max Temp °F",
+        "temp_min": "Min Temp °F",
+        "precipitation": "Total Precip in"
+    })
+    st.dataframe(display_a, hide_index=True)
 
     st.write("**Range B Weather**")
-    st.dataframe(weather_b, hide_index=True)
+    display_b = weather_b.copy()
+    display_b["Date"] = display_b["Date"].dt.strftime("%Y-%m-%d")
+    display_b = display_b.rename(columns={
+        "temp_max": "Max Temp °F",
+        "temp_min": "Min Temp °F",
+        "precipitation": "Total Precip in"
+    })
+    st.dataframe(display_b, hide_index=True)
 
 # ============================================================
 # Footer
