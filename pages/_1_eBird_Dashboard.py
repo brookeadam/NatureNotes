@@ -14,8 +14,6 @@ def main():
     DATA_DIR = Path("data")
     EBIRD_DATA_FILE = Path("historical_checklists.csv")
     
-    st.set_page_config(page_title="Nature Notes eBird Observations Dashboard for Headwaters at Incarnate Word", layout="wide")
-    
     # === API Fetch Functions ===
     @st.cache_data(ttl=3600)
     def fetch_weather_data(lat, lon, start, end):
