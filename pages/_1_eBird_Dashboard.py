@@ -36,47 +36,27 @@ def main():
                 "temp_min": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_min", [])],
                 "precipitation": [(p * 0.0393701) if p is not None else None for p in data.get("daily", {}).get("precipitation_sum", [])]
             })
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             st.error(f"Error fetching weather data: {e}")
             return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
     
     @st.cache_data
     def load_ebird_data_from_file():
         if EBIRD_DATA_FILE.exists():
-            df = pd.read_csv(
-                EBIRD_DATA_FILE,
-                sep=None, engine="python",
-                encoding="cp1252",
-                on_bad_lines="skip"
-            )
+            df = pd.read_csv(EBIRD_DATA_FILE, sep=None, engine="python", encoding="cp1252", on_bad_lines="skip")
             return clean_ebird_data(df)
         else:
-            st.warning("Ebird data file not found. Please check if the GitHub Action ran successfully.")
+            st.warning("eBird data file not found.")
             return pd.DataFrame()
     
     @st.cache_data
     def clean_ebird_data(df):
-        """
-        Robust eBird CSV cleaner:
-        - Handles tab-delimited or weirdly formatted exports
-        - Normalizes column names
-        - Finds Count column flexibly
-        - Returns deduplicated dataframe
-        """
-    
-        if df.empty:
-            return df
-    
-        # --- Step 1: Fix tab-delimited single-column CSVs ---
+        if df.empty: return df
         if len(df.columns) == 1 and "\t" in df.columns[0]:
             df = df.iloc[:, 0].str.split("\t", expand=True)
             df.columns = [c.strip() for c in df.iloc[0]]
             df = df.iloc[1:].reset_index(drop=True)
-    
-        # --- Step 2: Normalize column names ---
         df.columns = [c.strip().upper() for c in df.columns]
-    
-        # --- Step 3: Map columns flexibly ---
         column_map = {
             "SPECIES": ["COMMON NAME", "SPECIES"],
             "SCIENTIFIC NAME": ["SCIENTIFIC NAME"],
@@ -84,20 +64,13 @@ def main():
             "DATE": ["OBSERVATION DATE", "DATE"],
             "TIME": ["TIME OBSERVATIONS STARTED", "TIME"]
         }
-    
         resolved = {}
         for key, options in column_map.items():
             for opt in options:
                 if opt in df.columns:
                     resolved[key] = opt
                     break
-    
-        missing = [k for k in column_map if k not in resolved]
-        if missing:
-            st.error(f"Missing required eBird columns: {missing}\nColumns detected: {list(df.columns)}")
-            return pd.DataFrame()
-    
-        # --- Step 4: Build cleaned DataFrame ---
+        if len(resolved) < 5: return pd.DataFrame()
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
@@ -105,417 +78,44 @@ def main():
             "Time": df[resolved["TIME"]],
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
-    
-        df_cleaned = df_cleaned.dropna(subset=["Date"])
-    
-        # --- Step 5: Deduplicate overlapping entries ---
-        df_cleaned = (
-            df_cleaned
-            .groupby(["Species", "Scientific Name", "Date", "Time"], as_index=False)
-            .agg(Count=("Count", "max"))
-        )
-    
-        # --- Step 6: Ensure Count column exists ---
-        if "Count" not in df_cleaned.columns:
-            st.error(f"No Count column found in eBird data. Columns detected: {df_cleaned.columns.tolist()}")
-            df_cleaned["Count"] = 0
-        else:
-            df_cleaned["Count"] = pd.to_numeric(df_cleaned["Count"], errors="coerce").fillna(0).astype(int)
-    
-        return df_cleaned
+        return df_cleaned.dropna(subset=["Date"])
     
     # === HEADER ===
     st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align: center; color: gray;'>Explore bird sightings and weather patterns side-by-side. Updated monthly.</h4>", unsafe_allow_html=True)
     
-    # === Data Loading and Preprocessing ===
+    # === Data Loading ===
     MIN_DATE = datetime.date(1985, 1, 1)
     MAX_DATE = datetime.date(2035, 12, 31)
-    
     ebird_df = load_ebird_data_from_file()
-    merged_df = pd.DataFrame(columns=["Species", "Scientific Name", "Count", "Date"])
     
-    if not ebird_df.empty:
-        merged_df = ebird_df.rename(columns={
-            "COMMON NAME": "Species",
-            "SCIENTIFIC NAME": "Scientific Name",
-            "OBSERVATION COUNT": "Count",
-            "OBSERVATION DATE": "Date"
-        })
-        merged_df["Count"] = pd.to_numeric(merged_df["Count"], errors="coerce").fillna(0).astype(int)
-        merged_df["Date"] = pd.to_datetime(merged_df["Date"])
-    
-    # === Latest Checklist Section ===
+    if ebird_df.empty:
+        st.error("No eBird data found.")
+        return
+
+    # === Latest Checklist ===
     st.subheader("🆕 Latest Checklist 🆕")
-    
-    if not merged_df.empty:
-        latest_date = merged_df["Date"].max()
-        latest_checklist_df = merged_df[merged_df["Date"] == latest_date].copy()
-        
-        if not latest_checklist_df.empty:
-            st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
-            
-            latest_checklist_table = latest_checklist_df.sort_values(
-                "Count", ascending=False
-            ).copy()
-            
-            st.dataframe(
-                latest_checklist_table[["Species", "Scientific Name", "Count"]].rename(
-                    columns={
-                        "Species": "COMMON NAME",
-                        "Scientific Name": "SCIENTIFIC NAME",
-                        "Count": "OBSERVATION COUNT"
-                    }
-                ).style.set_properties(**{'text-align': 'left'}),
-                use_container_width=True,
-                hide_index=True
-            )
-    
-            weather_df_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
-            weather_filtered_latest = weather_df_latest.copy()
-            # FIX 3: Removed the problematic line that caused the KeyError, as the Date column
-            # should already be in datetime format if the weather function succeeds.
-            # weather_filtered_latest["Date"] = pd.to_datetime(weather_filtered_latest["Date"]) 
-            weather_filtered_latest = weather_filtered_latest.dropna(subset=["temp_max", "temp_min"])
-    
-            if not weather_filtered_latest.empty:
-                st.subheader(f"Weather for {latest_date.date()}")
-                display_latest_weather_df = weather_filtered_latest.copy()
-                display_latest_weather_df["Date"] = display_latest_weather_df["Date"].dt.strftime("%Y-%m-%d")
-                
-                display_latest_weather_df = display_latest_weather_df.rename(columns={
-                    "temp_max": "Max Temp °F",
-                    "temp_min": "Min Temp °F",
-                    "precipitation": "Total Precip in"
-                })
-                
-                st.dataframe(
-                    display_latest_weather_df[["Max Temp °F", "Min Temp °F", "Total Precip in"]],
-                    hide_index=True
-                )
-            else:
-                st.warning("No weather data available for the latest checklist date.")
-        else:
-            st.warning("No data available for the latest checklist.")
-    
-    # === Recent eBird Sightings Section (User-Filtered) ===
+    latest_date = ebird_df["Date"].max()
+    latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
+    st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
+    st.dataframe(latest_df[["Species", "Scientific Name", "Count"]], use_container_width=True, hide_index=True)
+
+    # === Weather ===
+    weather_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
+    if not weather_latest.empty:
+        st.subheader(f"Weather for {latest_date.date()}")
+        st.dataframe(weather_latest, use_container_width=True, hide_index=True)
+
+    # === Filtered View ===
     st.subheader("⏱️ Filter by Single Date Range ⏱️")
+    d1 = st.date_input("Start Date", latest_date - datetime.timedelta(days=30))
+    d2 = st.date_input("End Date", latest_date)
     
-    main_start_date = st.date_input("Start Date", key="main_start", min_value=MIN_DATE, max_value=MAX_DATE)
-    main_end_date = st.date_input("End Date", key="main_end", min_value=MIN_DATE, max_value=MAX_DATE)
-    
-    weather_df = fetch_weather_data(LATITUDE, LONGITUDE, main_start_date, main_end_date)
-    weather_filtered = weather_df.copy()
-    # Note: The original code's date conversion here is also potentially redundant but left intact, 
-    # as it's not the line that was failing.
-    weather_filtered["Date"] = pd.to_datetime(weather_filtered["Date"])
-    weather_filtered = weather_filtered.dropna(subset=["temp_max", "temp_min"])
-    
-    if not merged_df.empty:
-        filtered_ebird_df = merged_df[(merged_df["Date"] >= pd.to_datetime(main_start_date)) &
-                                     (merged_df["Date"] <= pd.to_datetime(main_end_date))]
-        
-        if not filtered_ebird_df.empty:
-            filtered_ebird_df = filtered_ebird_df.sort_values("Date", ascending=False).copy()
-            filtered_ebird_df["Date"] = filtered_ebird_df["Date"].dt.strftime("%Y-%m-%d")
-            
-            table_df = filtered_ebird_df[["Species", "Scientific Name", "Count", "Date"]].rename(columns={
-                "Species": "COMMON NAME",
-                "Scientific Name": "SCIENTIFIC NAME",
-                "Count": "OBSERVATION COUNT",
-                "Date": "OBSERVATION DATE",
-            })
-            
-            styled_table = table_df.style.set_properties(**{'text-align': 'left'})
-            st.dataframe(styled_table, use_container_width=True, hide_index=True)
-        else:
-            st.warning("No recent observations available for the selected date range.")
-    
-    # === Weather Metrics Section (User-Filtered) ===
-    st.subheader("🌡️ Weather Metrics 🌡️")
-    
-    if not weather_filtered.empty:
-        col1, col2 = st.columns(2)
-        with col1:
-            max_temp_row = weather_filtered.loc[weather_filtered["temp_max"].idxmax()]
-            max_temp = max_temp_row["temp_max"]
-            max_temp_date = max_temp_row["Date"]
-            st.metric(label=f"Max Temp (F) on {max_temp_date.date()}", value=f"{max_temp:.2f}")
-        with col2:
-            min_temp_row = weather_filtered.loc[weather_filtered["temp_min"].idxmin()]
-            min_temp = min_temp_row["temp_min"]
-            min_temp_date = min_temp_row["Date"]
-            st.metric(label=f"Min Temp (F) on {min_temp_date.date()}", value=f"{min_temp:.2f}")
-            
-        st.subheader("Daily Weather Data")
-        display_weather_df = weather_filtered.copy()
-        display_weather_df["Date"] = display_weather_df["Date"].dt.strftime("%Y-%m-%d")
-        
-        display_weather_df = display_weather_df.rename(columns={
-            "temp_max": "Max Temp °F",
-            "temp_min": "Min Temp °F",
-            "precipitation": "Total Precip in"
-        })
-        
-        st.dataframe(
-            display_weather_df.style.set_properties(**{'text-align': 'left'}).format(
-                {
-                    'Max Temp °F': '{:.2f}',
-                    'Min Temp °F': '{:.2f}',
-                    'Total Precip in': '{:.4f}'
-                }
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.warning("No weather data available for the selected date range.")
-    
-    # === Species Count Comparison ==
-    st.subheader("📊 Comparison Two Date Ranges 📊")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        range1_start = st.date_input("Range 1 Start", key="range1_start", min_value=MIN_DATE, max_value=MAX_DATE)
-        range1_end = st.date_input("Range 1 End", key="range1_end", min_value=MIN_DATE, max_value=MAX_DATE)
-    with col2:
-        range2_start = st.date_input("Range 2 Start", key="range2_start", min_value=MIN_DATE, max_value=MAX_DATE)
-        range2_end = st.date_input("Range 2 End", key="range2_end", min_value=MIN_DATE, max_value=MAX_DATE)
-    
-    if st.button("Compare Species and Weather"):
-        range_a_birds = merged_df[
-            (merged_df["Date"] >= pd.to_datetime(range1_start)) &
-            (merged_df["Date"] <= pd.to_datetime(range1_end))
-        ]
-        range_b_birds = merged_df[
-            (merged_df["Date"] >= pd.to_datetime(range2_start)) &
-            (merged_df["Date"] <= pd.to_datetime(range2_end))
-        ]
-    
-        unique_species_a = range_a_birds["Species"].nunique()
-        unique_species_b = range_b_birds["Species"].nunique()
-        total_birds_a = range_a_birds["Count"].sum()
-        total_birds_b = range_b_birds["Count"].sum()
-    
-        st.subheader("🔢 Bird Summary 🔢")
-        st.write(f"**Range A ({range1_start}–{range1_end}):** {unique_species_a} unique species, {total_birds_a} total birds")
-        st.write(f"**Range B ({range2_start}–{range2_end}):** {unique_species_b} unique species, {total_birds_b} total birds")
-        
-        table_a = range_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
-        table_b = range_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
-    
-        col_a = f"Birds ({range1_start}–{range1_end})"
-        col_b = f"Birds ({range2_start}–{range2_end})"
-        comparison_df = pd.merge(table_a.rename(columns={"Count": col_a}),
-                                 table_b.rename(columns={"Count": col_b}),
-                                 on=["Species", "Scientific Name"], how="outer").fillna(0)
-        comparison_df["Difference"] = comparison_df[col_b] - comparison_df[col_a]
-    
-        st.subheader("🐦 Species Comparison Table 🐦")
-        st.dataframe(
-            comparison_df.style.set_properties(**{'text-align': 'left'}).format(
-                {
-                    col_a: '{:.0f}',
-                    col_b: '{:.0f}',
-                    'Difference': '{:.0f}'
-                }
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-        st.subheader("🌡️ Weather Trends (Detailed) 🌡️")
-        weather_range_a = fetch_weather_data(LATITUDE, LONGITUDE, range1_start, range1_end)
-        weather_range_b = fetch_weather_data(LATITUDE, LONGITUDE, range2_start, range2_end)
-    
-        if not weather_range_a.empty:
-            max_temp_row_a = weather_range_a.loc[weather_range_a["temp_max"].idxmax()]
-            min_temp_row_a = weather_range_a.loc[weather_range_a["temp_min"].idxmin()]
-            max_temp_a = max_temp_row_a["temp_max"]
-            max_temp_date_a = max_temp_row_a["Date"].strftime("%Y-%m-%d")
-            min_temp_a = min_temp_row_a["temp_min"]
-            min_temp_date_a = min_temp_row_a["Date"].strftime("%Y-%m-%d")
-            total_precip_a = weather_range_a['precipitation'].sum()
-            st.write(f"**Weather Summary: Range A ({range1_start}–{range1_end}):** Max Temp: {max_temp_a:.2f}°F on {max_temp_date_a}, Min Temp: {min_temp_a:.2f}°F on {min_temp_date_a}, Total Precip: {total_precip_a:.4f} in")
-            
-            renamed_a = weather_range_a.copy()
-            renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-            
-            renamed_a = renamed_a.rename(columns={
-                "temp_max": "Max Temp °F",
-                "temp_min": "Min Temp °F",
-                "precipitation": "Total Precip in"
-            })
-            st.dataframe(
-                renamed_a.style.set_properties(**{'text-align': 'left'}).format(
-                    {
-                        'Max Temp °F': '{:.2f}',
-                        'Min Temp °F': '{:.2f}',
-                        'Total Precip in': '{:.4f}'
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("No weather data for Range A.")
-    
-        if not weather_range_b.empty:
-            max_temp_row_b = weather_range_b.loc[weather_range_b["temp_max"].idxmax()]
-            min_temp_row_b = weather_range_b.loc[weather_range_b["temp_min"].idxmin()]
-            max_temp_b = max_temp_row_b["temp_max"]
-            max_temp_date_b = max_temp_row_b["Date"].strftime("%Y-%m-%d")
-            min_temp_b = min_temp_row_b["temp_min"]
-            min_temp_date_b = min_temp_row_b["Date"].strftime("%Y-%m-%d")
-            total_precip_b = weather_range_b['precipitation'].sum()
-            st.write(f"**Weather Summary: Range B ({range2_start}–{range2_end}):** Max Temp: {max_temp_b:.2f}°F on {max_temp_date_b}, Min Temp: {min_temp_b:.2f}°F on {min_temp_date_b}, Total Precip: {total_precip_b:.4f} in")
-            
-            renamed_b = weather_range_b.copy()
-            renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
-            
-            renamed_b = renamed_b.rename(columns={
-                "temp_max": "Max Temp °F",
-                "temp_min": "Min Temp °F",
-                "precipitation": "Total Precip in"
-            })
-            st.dataframe(
-                renamed_b.style.set_properties(**{'text-align': 'left'}).format(
-                    {
-                        'Max Temp °F': '{:.2f}',
-                        'Min Temp °F': '{:.2f}',
-                        'Total Precip in': '{:.4f}'
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("No weather data for Range B.")
-    
-    # === Compare Specific Checklists ===
-    st.markdown("---")
-    st.subheader("📝 Compare Specific Checklists 📝")
-    
-    if not merged_df.empty:
-        unique_dates = sorted(merged_df["Date"].unique(), reverse=True)
-        formatted_dates = [d.strftime("%Y-%m-%d") for d in unique_dates]
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            selected_checklist_a = st.selectbox(
-                "Select Checklist A",
-                options=formatted_dates,
-                key="checklist_a"
-            )
-        with col2:
-            selected_checklist_b = st.selectbox(
-                "Select Checklist B",
-                options=formatted_dates,
-                key="checklist_b"
-            )
-    
-        if st.button("Compare Checklists"):
-            date_a = pd.to_datetime(selected_checklist_a)
-            date_b = pd.to_datetime(selected_checklist_b)
-            
-            checklist_a_birds = merged_df[merged_df["Date"] == date_a]
-            checklist_b_birds = merged_df[merged_df["Date"] == date_b]
-            
-            st.subheader("🐦 Species Comparison 🐦")
-            table_a = checklist_a_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
-            table_b = checklist_b_birds.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index()
-            
-            col_a_name = f"Birds ({selected_checklist_a})"
-            col_b_name = f"Birds ({selected_checklist_b})"
-            
-            comparison_df_checklist = pd.merge(table_a.rename(columns={"Count": col_a_name}),
-                                               table_b.rename(columns={"Count": col_b_name}),
-                                               on=["Species", "Scientific Name"], how="outer").fillna(0)
-            comparison_df_checklist["Difference"] = comparison_df_checklist[col_b_name] - comparison_df_checklist[col_a_name]
-    
-            st.dataframe(
-                comparison_df_checklist.style.set_properties(**{'text-align': 'left'}).format(
-                    {
-                        col_a_name: '{:.0f}',
-                        col_b_name: '{:.0f}',
-                        'Difference': '{:.0f}'
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            st.subheader("🌡️ Weather Comparison 🌡️")
-            weather_a = fetch_weather_data(LATITUDE, LONGITUDE, date_a.date(), date_a.date())
-            weather_b = fetch_weather_data(LATITUDE, LONGITUDE, date_b.date(), date_b.date())
-            
-            if not weather_a.empty:
-                max_temp_row_a = weather_a.loc[weather_a["temp_max"].idxmax()]
-                min_temp_row_a = weather_a.loc[weather_a["temp_min"].idxmin()]
-                max_temp_a = max_temp_row_a["temp_max"]
-                max_temp_date_a = max_temp_row_a["Date"].strftime("%Y-%m-%d")
-                min_temp_a = min_temp_row_a["temp_min"]
-                min_temp_date_a = min_temp_row_a["Date"].strftime("%Y-%m-%d")
-                total_precip_a = weather_a['precipitation'].sum()
-                st.write(f"**Weather Summary: Checklist A ({selected_checklist_a}):** Max Temp: {max_temp_a:.2f}°F on {max_temp_date_a}, Min Temp: {min_temp_a:.2f}°F on {min_temp_date_a}, Total Precip: {total_precip_a:.4f} in")
-                
-                renamed_a = weather_a.copy()
-                renamed_a["Date"] = renamed_a["Date"].dt.strftime("%Y-%m-%d")
-                renamed_a = renamed_a.rename(columns={
-                    "temp_max": "Max Temp °F",
-                    "temp_min": "Min Temp °F",
-                    "precipitation": "Total Precip in"
-                })
-                st.dataframe(
-                    renamed_a.style.set_properties(**{'text-align': 'left'}).format(
-                        {
-                            'Max Temp °F': '{:.2f}',
-                            'Min Temp °F': '{:.2f}',
-                            'Total Precip in': '{:.4f}'
-                        }
-                    ),
-                    use_container_width=True
-                )
-            else:
-                st.info(f"No weather data available for Checklist A ({selected_checklist_a}).")
-                
-            if not weather_b.empty:
-                max_temp_row_b = weather_b.loc[weather_b["temp_max"].idxmax()]
-                min_temp_row_b = weather_b.loc[weather_b["temp_min"].idxmin()]
-                max_temp_b = max_temp_row_b["temp_max"]
-                max_temp_date_b = max_temp_row_b["Date"].strftime("%Y-%m-%d")
-                min_temp_b = min_temp_row_b["temp_min"]
-                min_temp_date_b = min_temp_row_b["Date"].strftime("%Y-%m-%d")
-                total_precip_b = weather_b['precipitation'].sum()
-                st.write(f"**Weather Summary: Checklist B ({selected_checklist_b}):** Max Temp: {max_temp_b:.2f}°F on {max_temp_date_b}, Min Temp: {min_temp_b:.2f}°F on {min_temp_date_b}, Total Precip: {total_precip_b:.4f} in")
-                
-                renamed_b = weather_b.copy()
-                renamed_b["Date"] = renamed_b["Date"].dt.strftime("%Y-%m-%d")
-                renamed_b = renamed_b.rename(columns={
-                    "temp_max": "Max Temp °F",
-                    "temp_min": "Min Temp °F",
-                    "precipitation": "Total Precip in"
-                })
-                st.dataframe(
-                    renamed_b.style.set_properties(**{'text-align': 'left'}).format(
-                        {
-                            'Max Temp °F': '{:.2f}',
-                            'Min Temp °F': '{:.2f}',
-                            'Total Precip in': '{:.4f}'
-                        }
-                    ),
-                    use_container_width=True,
-                    hide_index=True
-                )
-            else:
-                st.info(f"No weather data available for Checklist B ({selected_checklist_b}).")
-    else:
-        st.info("Ebird data is not available to create a checklist comparison.")
-        
+    filtered = ebird_df[(ebird_df["Date"] >= pd.to_datetime(d1)) & (ebird_df["Date"] <= pd.to_datetime(d2))]
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+
     # === Footer ===
     st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: gray;'>"
-        "Nature Notes for Headwaters at Incarnate Word • Developed with ❤️ by Brooke Adam and Kraken Security Operations 🌿"
-        "</div>",
-        unsafe_allow_html=True
-    )
+    st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke 🌿</div>", unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
