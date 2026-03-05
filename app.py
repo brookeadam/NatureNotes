@@ -1,18 +1,23 @@
 import streamlit as st
-# Move imports to the top to prevent routing errors
-from pages import _1_eBird_Dashboard as ebird
-from pages import _2_Butterfly_Dashboard as butterfly
-from pages import _3_Phenology_Dashboard as phenology
 
+# MUST be the first Streamlit command
 st.set_page_config(
     page_title="NatureNotes",
     page_icon="🌿",
     layout="wide"
 )
 
-# -------------------------
-# SIDEBAR NAVIGATION
-# -------------------------
+# --- FORCE WIDE LAYOUT CSS ---
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 0rem;
+            padding-left: 5rem;
+            padding-right: 5rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 st.sidebar.title("NatureNotes 🌿")
 
@@ -24,13 +29,15 @@ page = st.sidebar.radio(
 # -------------------------
 # PAGE ROUTING
 # -------------------------
-# We use st.container() to help force the wide layout across the full width
-with st.container():
-    if page == "eBird Dashboard":
-        ebird.main()
+# We import inside the IF blocks to prevent the "disappearing" error
+if page == "eBird Dashboard":
+    from pages import _1_eBird_Dashboard as ebird
+    ebird.main()
 
-    elif page == "Butterfly Dashboard":
-        butterfly.main()
+elif page == "Butterfly Dashboard":
+    from pages import _2_Butterfly_Dashboard as butterfly
+    butterfly.main()
 
-    elif page == "Phenology Dashboard":
-        phenology.main()
+elif page == "Phenology Dashboard":
+    from pages import _3_Phenology_Dashboard as phenology
+    phenology.main()
