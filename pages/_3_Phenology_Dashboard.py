@@ -3,6 +3,10 @@ import pandas as pd
 import requests
 import datetime
 
+def main():
+
+    st.title("Phenology Dashboard")
+
 # ============================================================
 # Constants
 # ============================================================
