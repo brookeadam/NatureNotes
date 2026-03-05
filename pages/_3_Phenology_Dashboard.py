@@ -230,7 +230,6 @@ def main():
     if st.button("Compare Ranges"):
         rangeA = df[(df["Date"] >= pd.to_datetime(r1_s)) & (df["Date"] <= pd.to_datetime(r1_e))]
         rangeB = df[(df["Date"] >= pd.to_datetime(r2_s)) & (df["Date"] <= pd.to_datetime(r2_e))]
-        # ... logic for merging and displaying ranges ...
         st.info("Range comparison logic executed.")
 
     st.markdown("---")
