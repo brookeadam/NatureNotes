@@ -66,7 +66,12 @@ def main():
     @st.cache_data
     def load_pheno_data():
         try:
-            df_raw = pd.read_csv("historical_pheno_data.csv", encoding="utf-8", on_bad_lines="skip")
+            df_raw = pd.read_csv(
+                "historical_pheno_data.csv",
+                encoding="utf-8",
+                sep="\t",  # 👈 THIS is the fix
+                on_bad_lines="skip"
+            )
 
             # Normalize column names
             df_raw.columns = (
