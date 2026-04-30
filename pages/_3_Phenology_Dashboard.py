@@ -67,14 +67,26 @@ def main():
     def load_pheno_data():
         try:
             df_raw = pd.read_csv("historical_pheno_data.csv", encoding="utf-8", on_bad_lines="skip")
-            df_raw.columns = [c.strip().upper() for c in df_raw.columns]
+
+            # Normalize column names
+            df_raw.columns = (
+                df_raw.columns
+                .str.strip()
+                .str.upper()
+                .str.replace('\ufeff', '', regex=False)  # remove BOM if present
+            )
+
+            # Drop junk Excel columns like "Unnamed: 8"
+            df_raw = df_raw.loc[:, ~df_raw.columns.str.contains('^UNNAMED', case=False)]
 
             required = ["OBSERVATIONDATETIME", "LOCATION", "WEDGE", "CATEGORY",
                         "COMMONNAME", "SCIENTIFICNAME", "STATUS", "NOTES"]
 
             missing = [c for c in required if c not in df_raw.columns]
+
             if missing:
                 st.error(f"Missing required columns: {missing}")
+                st.write("Columns found:", df_raw.columns.tolist())  # debug visibility
                 return pd.DataFrame()
 
             df_raw["OBSERVATIONDATETIME"] = pd.to_datetime(df_raw["OBSERVATIONDATETIME"], errors="coerce")
