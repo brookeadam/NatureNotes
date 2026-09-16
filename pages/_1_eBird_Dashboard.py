@@ -77,18 +77,18 @@ def main():
                     resolved[key] = opt
                     break
 
-        # Require core columns; TIME optional
         required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
         if not all(k in resolved for k in required):
             return pd.DataFrame()
 
-        # ⭐ FIX #1 — robust date parsing
+        # ⭐ FIX — bulletproof date parsing
         cleaned_dates = (
             df[resolved["DATE"]]
             .astype(str)
             .str.strip()
             .str.replace("T", " ", regex=False)
             .str.replace("/", "-", regex=False)
+            .str.replace(r"[^\w\s\-:]", "", regex=True)  # remove BOM, unicode, weird chars
         )
 
         df_cleaned = pd.DataFrame({
@@ -101,7 +101,7 @@ def main():
 
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
-        # ⭐ FIX #2 — dedupe by Date + Species
+        # ⭐ FIX — dedupe by Date + Species
         df_cleaned = df_cleaned.drop_duplicates(subset=["Date", "Species"], keep="first")
 
         return df_cleaned
@@ -151,7 +151,6 @@ def main():
     common_search = st.text_input("Search Common Name")
     scientific_search = st.text_input("Search Scientific Name")
 
-    # Filter ONLY by fields that exist in your dataset
     filtered2 = ebird_df[
         (ebird_df["Date"] >= pd.to_datetime(start_date)) &
         (ebird_df["Date"] <= pd.to_datetime(end_date))
@@ -171,7 +170,12 @@ def main():
 
     # === Weather for Filtered Range ===
     st.subheader("🌡️ Weather for Filtered Range")
-    weather_range = fetch_weather_data(LATITUDE, LONGITUDE, start_date, end_date)
+
+    # ⭐ FIX — prevent invalid weather API range
+    safe_start = max(start_date, datetime.date(2000, 1, 1))
+    safe_end = min(end_date, datetime.date.today())
+
+    weather_range = fetch_weather_data(LATITUDE, LONGITUDE, safe_start, safe_end)
     weather_range = weather_range.dropna(subset=["temp_max", "temp_min"])
 
     if not weather_range.empty:
