@@ -71,7 +71,7 @@ def main():
                     resolved[key] = opt
                     break
         required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
-        if not all(r in resolved for r in required):
+    if not all(r in resolved for r in required):
         return pd.DataFrame()
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
