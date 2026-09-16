@@ -42,78 +42,61 @@ def main():
             st.error(f"Error fetching weather data: {e}")
             return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
     
+    # === Load eBird Data ===
     @st.cache_data
     def load_ebird_data_from_file():
         if EBIRD_DATA_FILE.exists():
-            df = pd.read_csv(EBIRD_DATA_FILE, sep=None, engine="python", encoding="cp1252", on_bad_lines="skip")
+            # Your file is space-delimited, not comma-delimited
+            df = pd.read_csv(
+                EBIRD_DATA_FILE,
+                delim_whitespace=True,
+                header=None,
+                names=[
+                    "GUID",
+                    "Species",
+                    "Scientific Name",
+                    "Count",
+                    "Location",
+                    "Date",
+                    "Time",
+                    "Observer",
+                    "Protocol",
+                    "Duration",
+                    "Distance",
+                    "NumObservers"
+                ],
+                engine="python"
+            )
             return clean_ebird_data(df)
         else:
             st.warning("eBird data file not found.")
             return pd.DataFrame()
     
+    # === Clean eBird Data ===
     @st.cache_data
     def clean_ebird_data(df):
-        if df.empty: 
-            return df
-
-        # Handle tab-delimited files
-        if len(df.columns) == 1 and "\t" in df.columns[0]:
-            df = df.iloc[:, 0].str.split("\t", expand=True)
-            df.columns = [c.strip() for c in df.iloc[0]]
-            df = df.iloc[1:].reset_index(drop=True)
-
-        # Normalize column names
-        df.columns = [c.strip().upper() for c in df.columns]
-
-        column_map = {
-            "SPECIES": ["COMMON NAME", "SPECIES"],
-            "SCIENTIFIC NAME": ["SCIENTIFIC NAME"],
-            "COUNT": ["COUNT", "OBSERVATION COUNT", "HOW MANY", "NUMBER OBSERVED"],
-            "DATE": ["OBSERVATION DATE", "DATE"],
-            "TIME": ["TIME OBSERVATIONS STARTED", "TIME"]
-        }
-
-        resolved = {}
-        for key, options in column_map.items():
-            for opt in options:
-                if opt in df.columns:
-                    resolved[key] = opt
-                    break
-
-        required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
-        if not all(k in resolved for k in required):
-            return pd.DataFrame()
-
-        # ⭐ REMOVE REPEATED HEADER ROWS
-        df = df[df[resolved["DATE"]].astype(str).str.contains(r"\d", regex=True)]
-
-        # ⭐ UNIVERSAL DATE PARSER — accepts ANY date format
-        parsed_dates = pd.to_datetime(
-            df[resolved["DATE"]].astype(str),
+        # Parse dates
+        df["Date"] = pd.to_datetime(
+            df["Date"].astype(str),
             errors="coerce",
             infer_datetime_format=True
         )
 
-        df_cleaned = pd.DataFrame({
-            "Species": df[resolved["SPECIES"]],
-            "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
-            "Date": parsed_dates,
-            "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
-            "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
-        })
-
         # Drop invalid dates
-        df_cleaned = df_cleaned.dropna(subset=["Date"])
+        df = df.dropna(subset=["Date"])
 
-        # ⭐ Deduplicate by Date + Species
-        df_cleaned = df_cleaned.drop_duplicates(subset=["Date", "Species"], keep="first")
+        # Convert Count to int
+        df["Count"] = pd.to_numeric(df["Count"], errors="coerce").fillna(0).astype(int)
 
-        return df_cleaned
+        # Deduplicate by Date + Species
+        df = df.drop_duplicates(subset=["Date", "Species"], keep="first")
+
+        return df
     
     # === HEADER ===
     st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
     
-    # === Data Loading ===
+    # === Load Data ===
     MIN_DATE = datetime.date(1985, 1, 1)
     MAX_DATE = datetime.date(2035, 12, 31)
     ebird_df = load_ebird_data_from_file()
@@ -133,7 +116,7 @@ def main():
     st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
     st.dataframe(latest_df_display[["Species", "Scientific Name", "Count"]], use_container_width=True, hide_index=True)
 
-    # === Weather ===
+    # === Weather for Latest Date ===
     weather_latest = fetch_weather_data(
         LATITUDE, LONGITUDE,
         latest_date.date(),
@@ -144,7 +127,7 @@ def main():
         st.subheader(f"Weather for {latest_date.strftime('%Y-%m-%d')}")
         st.dataframe(weather_latest, use_container_width=True, hide_index=True)
 
-    # === Filtered View ===
+    # === Filter by Single Date Range ===
     st.subheader("⏱️ Filter by Single Date Range ⏱️")
     d1 = st.date_input("Start Date", latest_date.date() - datetime.timedelta(days=30))
     d2 = st.date_input("End Date", latest_date.date())
