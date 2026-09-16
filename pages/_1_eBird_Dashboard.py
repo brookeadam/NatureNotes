@@ -53,11 +53,15 @@ def main():
     def clean_ebird_data(df):
         if df.empty: 
             return df
+
+        # Handle tab-delimited files
         if len(df.columns) == 1 and "\t" in df.columns[0]:
             df = df.iloc[:, 0].str.split("\t", expand=True)
             df.columns = [c.strip() for c in df.iloc[0]]
             df = df.iloc[1:].reset_index(drop=True)
+
         df.columns = [c.strip().upper() for c in df.columns]
+
         column_map = {
             "SPECIES": ["COMMON NAME", "SPECIES"],
             "SCIENTIFIC NAME": ["SCIENTIFIC NAME"],
@@ -65,6 +69,7 @@ def main():
             "DATE": ["OBSERVATION DATE", "DATE"],
             "TIME": ["TIME OBSERVATIONS STARTED", "TIME"]
         }
+
         resolved = {}
         for key, options in column_map.items():
             for opt in options:
@@ -72,28 +77,31 @@ def main():
                     resolved[key] = opt
                     break
 
-        # Require core columns; TIME is optional
+        # Require core columns; TIME optional
         required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
         if not all(k in resolved for k in required):
             return pd.DataFrame()
 
+        # ⭐ FIX #1 — robust date parsing
+        cleaned_dates = (
+            df[resolved["DATE"]]
+            .astype(str)
+            .str.strip()
+            .str.replace("T", " ", regex=False)
+            .str.replace("/", "-", regex=False)
+        )
+
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
-            "Date": pd.to_datetime(
-                df[resolved["DATE"]]
-                    .astype(str)
-                    .str.strip()
-                    .str.replace("T", " ", regex=False)
-                    .str.replace("/", "-", regex=False),
-                errors="coerce"
-            ),
+            "Date": pd.to_datetime(cleaned_dates, errors="coerce"),
             "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
 
-        # Drop invalid dates, then dedupe by Date + Species
         df_cleaned = df_cleaned.dropna(subset=["Date"])
+
+        # ⭐ FIX #2 — dedupe by Date + Species
         df_cleaned = df_cleaned.drop_duplicates(subset=["Date", "Species"], keep="first")
 
         return df_cleaned
