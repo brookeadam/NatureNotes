@@ -139,6 +139,7 @@ def main():
     filtered = ebird_df[(ebird_df["Date"] >= pd.to_datetime(d1)) & (ebird_df["Date"] <= pd.to_datetime(d2))]
     st.dataframe(filtered, use_container_width=True, hide_index=True)
 
+    # === Filter by Two Date Ranges ===
     st.subheader("⏱️ Filter by Two Date Ranges")
     col1, col2 = st.columns(2)
     with col1:
@@ -150,25 +151,25 @@ def main():
     common_search = st.text_input("Search Common Name")
     scientific_search = st.text_input("Search Scientific Name")
 
-    filtered = df[
-        (df["Date"] >= pd.to_datetime(start_date)) &
-        (df["Date"] <= pd.to_datetime(end_date)) &
-        (df["Location"].isin(selected_locations)) &
-        (df["Category"].isin(selected_categories))
+    # Filter ONLY by fields that exist in your dataset
+    filtered2 = ebird_df[
+        (ebird_df["Date"] >= pd.to_datetime(start_date)) &
+        (ebird_df["Date"] <= pd.to_datetime(end_date))
     ].copy()
 
     if common_search:
-        filtered = filtered[filtered["Common Name"].str.contains(common_search, case=False, na=False)]
+        filtered2 = filtered2[filtered2["Species"].str.contains(common_search, case=False, na=False)]
     if scientific_search:
-        filtered = filtered[filtered["Scientific Name"].str.contains(scientific_search, case=False, na=False)]
+        filtered2 = filtered2[filtered2["Scientific Name"].str.contains(scientific_search, case=False, na=False)]
 
-    sort_col = st.selectbox("Sort by", ["Date", "Location", "Category", "Common Name", "Scientific Name"])
+    sort_col = st.selectbox("Sort by", ["Date", "Species", "Scientific Name", "Count"])
     sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
-    filtered = filtered.sort_values(sort_col, ascending=(sort_order == "Ascending"))
+    filtered2 = filtered2.sort_values(sort_col, ascending=(sort_order == "Ascending"))
 
-    st.dataframe(filtered[["Date", "Location", "Category", "Common Name", "Scientific Name", "Status", "Notes", "Wedge"]],
+    st.dataframe(filtered2[["Date", "Species", "Scientific Name", "Count"]],
                  hide_index=True, use_container_width=True)
 
+    # === Weather for Filtered Range ===
     st.subheader("🌡️ Weather for Filtered Range")
     weather_range = fetch_weather_data(LATITUDE, LONGITUDE, start_date, end_date)
     weather_range = weather_range.dropna(subset=["temp_max", "temp_min"])
@@ -189,26 +190,27 @@ def main():
         })
         st.dataframe(display_weather, hide_index=True)
 
+    # === Compare Specific Dates ===
     st.markdown("---")
     st.subheader("📝 Compare Specific Dates")
-    unique_dates = sorted(df["Date"].dt.date.unique(), reverse=True)
+    unique_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
     colA, colB = st.columns(2)
     with colA:
         dateA = st.selectbox("Select Date A", unique_dates)
     with colB:
         dateB = st.selectbox("Select Date B", unique_dates)
 
-    sort_compare = st.selectbox("Sort comparison by", ["Category", "Common Name", "Scientific Name", "Location"])
+    sort_compare = st.selectbox("Sort comparison by", ["Species", "Scientific Name", "Count"])
     sort_compare_order = st.radio("Comparison order", ["Ascending", "Descending"], horizontal=True)
 
     if st.button("Compare Dates"):
-        dfA = df[(df["Date"].dt.date == dateA) & (df["Location"].isin(selected_locations)) & (df["Category"].isin(selected_categories))]
-        dfB = df[(df["Date"].dt.date == dateB) & (df["Location"].isin(selected_locations)) & (df["Category"].isin(selected_categories))]
+        dfA = ebird_df[ebird_df["Date"].dt.date == dateA]
+        dfB = ebird_df[ebird_df["Date"].dt.date == dateB]
 
         merged = pd.merge(
-            dfA.groupby(["Location", "Category", "Common Name", "Scientific Name"]).size().reset_index(name="Count A"),
-            dfB.groupby(["Location", "Category", "Common Name", "Scientific Name"]).size().reset_index(name="Count B"),
-            on=["Location", "Category", "Common Name", "Scientific Name"], how="outer"
+            dfA.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count A"),
+            dfB.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count B"),
+            on=["Species", "Scientific Name"], how="outer"
         ).fillna(0)
 
         merged["Difference"] = merged["Count B"] - merged["Count A"]
@@ -224,22 +226,6 @@ def main():
         st.write("**Date B Weather**")
         st.dataframe(w_b.rename(columns={"temp_max": "Max Temp °F", "temp_min": "Min Temp °F"}), hide_index=True)
 
-    st.markdown("---")
-    st.subheader("📊 Compare Two Date Ranges")
-    rc1, rc2 = st.columns(2)
-    with rc1:
-        r1_s = st.date_input("Range 1 Start", MIN_DATE, key="r1s")
-        r1_e = st.date_input("Range 1 End", MAX_DATE, key="r1e")
-    with rc2:
-        r2_s = st.date_input("Range 2 Start", MIN_DATE, key="r2s")
-        r2_e = st.date_input("Range 2 End", MAX_DATE, key="r2e")
-
-    if st.button("Compare Ranges"):
-        rangeA = df[(df["Date"] >= pd.to_datetime(r1_s)) & (df["Date"] <= pd.to_datetime(r1_e))]
-        rangeB = df[(df["Date"] >= pd.to_datetime(r2_s)) & (df["Date"] <= pd.to_datetime(r2_e))]
-        st.info("Range comparison logic executed.")
-
-    
     # === Footer ===
     st.markdown("---")
     st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>", 
