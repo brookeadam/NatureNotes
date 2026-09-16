@@ -118,11 +118,15 @@ def main():
         # --- Drop rows with invalid dates ---
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
-        # --- Remove duplicate observations per date (one species per date) ---
+        # --- Normalize species fields to ensure dedupe works ---
+        df_cleaned["Species"] = df_cleaned["Species"].astype(str).str.strip().str.upper()
+        df_cleaned["Scientific Name"] = df_cleaned["Scientific Name"].astype(str).str.strip().str.upper()
+
+        # --- Remove duplicates: one species per date ---
         df_cleaned = df_cleaned.drop_duplicates(
             subset=["Date", "Species", "Scientific Name"],
             keep="first"
-        )     
+        )
 
         return df_cleaned
     
