@@ -62,6 +62,7 @@ def main():
             df.columns = [c.strip() for c in df.iloc[0]]
             df = df.iloc[1:].reset_index(drop=True)
 
+        # Normalize column names
         df.columns = [c.strip().upper() for c in df.columns]
 
         column_map = {
@@ -83,6 +84,9 @@ def main():
         if not all(k in resolved for k in required):
             return pd.DataFrame()
 
+        # ⭐ REMOVE REPEATED HEADER ROWS
+        df = df[df[resolved["DATE"]].astype(str).str.contains(r"\d", regex=True)]
+
         # ⭐ UNIVERSAL DATE PARSER — accepts ANY date format
         parsed_dates = pd.to_datetime(
             df[resolved["DATE"]].astype(str),
@@ -98,6 +102,7 @@ def main():
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
 
+        # Drop invalid dates
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
         # ⭐ Deduplicate by Date + Species
@@ -122,7 +127,6 @@ def main():
     latest_date = ebird_df["Date"].max()
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
 
-    # Format for display
     latest_df_display = latest_df.copy()
     latest_df_display["Date"] = latest_df_display["Date"].dt.strftime("%Y-%m-%d")
 
