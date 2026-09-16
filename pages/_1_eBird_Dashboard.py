@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import requests
-import altair as alt
 import datetime
 import re
 from pathlib import Path
@@ -17,10 +16,13 @@ def main():
             st.error("CSV file not found.")
             return pd.DataFrame()
 
-        # Read raw file as ONE column
-        raw = pd.read_csv(EBIRD_DATA_FILE, header=None, names=["raw"], engine="python")
+        # Read file line-by-line (NOT as CSV)
+        with open(EBIRD_DATA_FILE, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
 
         rows = []
+
+        # Regex pattern for your exact file structure
         pattern = re.compile(
             r"^(?P<GUID>\S+)\s+"
             r"(?P<Species>[A-Za-z'\- ]+?)\s+"
@@ -36,8 +38,8 @@ def main():
             r"(?P<NumObs>\d+)"
         )
 
-        for line in raw["raw"]:
-            m = pattern.match(line)
+        for line in lines:
+            m = pattern.match(line.strip())
             if m:
                 rows.append(m.groupdict())
 
@@ -77,7 +79,6 @@ def main():
         except:
             return pd.DataFrame()
 
-    # Load data
     df = load_ebird_data_from_file()
 
     if df.empty:
