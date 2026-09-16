@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 import datetime
-import re
 from pathlib import Path
 
 def main():
@@ -16,40 +15,79 @@ def main():
             st.error("CSV file not found.")
             return pd.DataFrame()
 
-        # Read file line-by-line (NOT as CSV)
-        with open(EBIRD_DATA_FILE, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
-
         rows = []
 
-        # Regex pattern for your exact file structure
-        pattern = re.compile(
-            r"^(?P<GUID>\S+)\s+"
-            r"(?P<Species>[A-Za-z'\- ]+?)\s+"
-            r"(?P<Sci>[A-Za-z'\- ]+?)\s+"
-            r"(?P<Count>\d+)\s+"
-            r"(?P<Location>L\d+)\s+"
-            r"(?P<Date>\d{1,2}/\d{1,2}/\d{4})\s+"
-            r"(?P<Time>\d{1,2}:\d{2}:\d{2}\s+[AP]M)\s+"
-            r"(?P<Observer>\S+)\s+"
-            r"(?P<Protocol>\S+)\s+"
-            r"(?P<Duration>\d+)\s+"
-            r"(?P<Distance>\d+)\s+"
-            r"(?P<NumObs>\d+)"
-        )
+        with open(EBIRD_DATA_FILE, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                parts = line.strip().split()
 
-        for line in lines:
-            m = pattern.match(line.strip())
-            if m:
-                rows.append(m.groupdict())
+                # Skip empty lines
+                if len(parts) < 12:
+                    continue
+
+                # GUID is always first
+                guid = parts[0]
+
+                # Count is always the first integer after scientific name
+                # Location is always L#####
+                # Date is always M/D/YYYY
+                # Time is always H:MM:SS AM/PM
+
+                # Find the index of Count (first pure integer)
+                count_idx = None
+                for i in range(1, len(parts)):
+                    if parts[i].isdigit():
+                        count_idx = i
+                        break
+
+                if count_idx is None:
+                    continue
+
+                # Species = words between GUID and scientific name
+                # Scientific name = two words before Count
+                sci_name = parts[count_idx - 2] + " " + parts[count_idx - 1]
+
+                species = " ".join(parts[1:count_idx - 2])
+
+                count = int(parts[count_idx])
+
+                # Location is next
+                location = parts[count_idx + 1]
+
+                # Date and Time
+                date = parts[count_idx + 2]
+                time = parts[count_idx + 3] + " " + parts[count_idx + 4]
+
+                # Observer, Protocol, Duration, Distance, NumObservers
+                observer = parts[count_idx + 5]
+                protocol = parts[count_idx + 6]
+                duration = parts[count_idx + 7]
+                distance = parts[count_idx + 8]
+                numobs = parts[count_idx + 9]
+
+                rows.append({
+                    "GUID": guid,
+                    "Species": species,
+                    "Scientific Name": sci_name,
+                    "Count": count,
+                    "Location": location,
+                    "Date": date,
+                    "Time": time,
+                    "Observer": observer,
+                    "Protocol": protocol,
+                    "Duration": duration,
+                    "Distance": distance,
+                    "NumObservers": numobs
+                })
 
         df = pd.DataFrame(rows)
 
-        # Parse date + time
+        # Parse datetime
         df["Date"] = pd.to_datetime(df["Date"] + " " + df["Time"], errors="coerce")
-        df["Count"] = pd.to_numeric(df["Count"], errors="coerce").fillna(0).astype(int)
 
         df = df.dropna(subset=["Date"])
+        df["Count"] = pd.to_numeric(df["Count"], errors="coerce").fillna(0).astype(int)
+
         df = df.drop_duplicates(subset=["Date", "Species"], keep="first")
 
         return df
@@ -70,7 +108,7 @@ def main():
             r.raise_for_status()
             data = r.json()
             df = pd.DataFrame({
-                "Date": pd.to_datetime(data["daily"]["time"]).strftime("%Y-%m-%d"),
+                "Date": pd.to_datetime(data["daily"]["time"]).dt.strftime("%Y-%m-%d"),
                 "temp_max": [(t * 9/5 + 32) for t in data["daily"]["temperature_2m_max"]],
                 "temp_min": [(t * 9/5 + 32) for t in data["daily"]["temperature_2m_min"]],
                 "precipitation": [(p * 0.0393701) for p in data["daily"]["precipitation_sum"]]
