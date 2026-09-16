@@ -43,7 +43,13 @@ def main():
     @st.cache_data
     def load_ebird_data_from_file():
         if EBIRD_DATA_FILE.exists():
-            df = pd.read_csv(EBIRD_DATA_FILE, sep=None, engine="python", encoding="cp1252", on_bad_lines="skip")
+            df = pd.read_csv(
+                EBIRD_DATA_FILE,
+                sep=None,
+                engine="python",
+                encoding="cp1252",
+                on_bad_lines="skip"
+            )
             return clean_ebird_data(df)
         else:
             st.warning("eBird data file not found.")
@@ -54,52 +60,71 @@ def main():
         if df.empty:
             return df
 
-        # Handle tab-delimited files
+        # --- Handle tab-delimited files ---
         if len(df.columns) == 1 and "\t" in df.columns[0]:
             df = df.iloc[:, 0].str.split("\t", expand=True)
             df.columns = [c.strip() for c in df.iloc[0]]
             df = df.iloc[1:].reset_index(drop=True)
 
+        # --- Normalize column names ---
         df.columns = [c.strip().upper() for c in df.columns]
 
-        column_map = {
-            "SPECIES": ["COMMON NAME", "SPECIES"],
-            "SCIENTIFIC NAME": ["SCIENTIFIC NAME"],
-            "COUNT": ["COUNT", "OBSERVATION COUNT", "HOW MANY", "NUMBER OBSERVED"],
-            "DATE": ["OBSERVATION DATE", "DATE"],
-            "TIME": ["TIME OBSERVATIONS STARTED", "TIME"]
-        }
+        # --- Flexible column resolver ---
+        def resolve_column(possible_names):
+            for name in possible_names:
+                if name in df.columns:
+                    return name
+            return None
 
-        resolved = {}
-        for key, options in column_map.items():
-            for opt in options:
-                if opt in df.columns:
-                    resolved[key] = opt
-                    break
+        col_species = resolve_column(["SPECIES", "COMMON NAME"])
+        col_sci = resolve_column(["SCIENTIFIC NAME"])
+        col_count = resolve_column(["COUNT", "OBSERVATION COUNT", "HOW MANY", "NUMBER OBSERVED"])
+        col_date = resolve_column(["DATE", "OBSERVATION DATE", "CHECKLIST DATE"])
+        col_time = resolve_column(["TIME", "TIME OBSERVATIONS STARTED", "START TIME"])
 
-        required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
-        if not all(r in resolved for r in required):
+        # --- If any required column missing, show debug info ---
+        if not all([col_species, col_sci, col_count, col_date]):
+            st.error("Could not resolve required columns. Columns found:")
+            st.write(df.columns.tolist())
             return pd.DataFrame()
 
+        # --- Clean date column aggressively ---
+        date_series = (
+            df[col_date]
+            .astype(str)
+            .str.strip()
+            .str.replace("T", " ", regex=False)
+            .str.replace("/", "-", regex=False)
+            .str.replace(r"[^\w\s\-:]", "", regex=True)  # remove BOM or weird chars
+        )
+
+        parsed_dates = pd.to_datetime(date_series, errors="coerce")
+
+        # --- Build cleaned dataframe ---
         df_cleaned = pd.DataFrame({
-            "Species": df[resolved["SPECIES"]],
-            "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
-            "Date": pd.to_datetime(
-                df[resolved["DATE"]]
-                    .astype(str)
-                    .str.strip()
-                    .str.replace("T", " ", regex=False)
-                    .str.replace("/", "-", regex=False),
-                errors="coerce"
-            ),
-            "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
-            "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
+            "Species": df[col_species],
+            "Scientific Name": df[col_sci],
+            "Date": parsed_dates,
+            "Time": df[col_time] if col_time else None,
+            "Count": pd.to_numeric(df[col_count], errors="coerce").fillna(0).astype(int)
         })
 
-        return df_cleaned.dropna(subset=["Date"])
+        # --- Debug: show rows that failed date parsing ---
+        bad_dates = df_cleaned[df_cleaned["Date"].isna()]
+        if len(bad_dates) > 0:
+            st.warning("Some rows had invalid dates and were dropped. Showing first 20:")
+            st.write(bad_dates.head(20))
+
+        # --- Drop rows with invalid dates ---
+        df_cleaned = df_cleaned.dropna(subset=["Date"])
+
+        return df_cleaned
     
     # === HEADER ===
-    st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>",
+        unsafe_allow_html=True
+    )
     
     # === Data Loading ===
     MIN_DATE = datetime.date(1985, 1, 1)
@@ -115,7 +140,11 @@ def main():
     latest_date = ebird_df["Date"].max()
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
     st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
-    st.dataframe(latest_df[["Species", "Scientific Name", "Count"]], use_container_width=True, hide_index=True)
+    st.dataframe(
+        latest_df[["Species", "Scientific Name", "Count"]],
+        use_container_width=True,
+        hide_index=True
+    )
 
     # === Weather ===
     weather_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
@@ -128,12 +157,18 @@ def main():
     d1 = st.date_input("Start Date", latest_date - datetime.timedelta(days=30))
     d2 = st.date_input("End Date", latest_date)
     
-    filtered = ebird_df[(ebird_df["Date"] >= pd.to_datetime(d1)) & (ebird_df["Date"] <= pd.to_datetime(d2))]
+    filtered = ebird_df[
+        (ebird_df["Date"] >= pd.to_datetime(d1)) &
+        (ebird_df["Date"] <= pd.to_datetime(d2))
+    ]
     st.dataframe(filtered, use_container_width=True, hide_index=True)
 
     # === Footer ===
     st.markdown("---")
-    st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke 🌿</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke 🌿</div>",
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
