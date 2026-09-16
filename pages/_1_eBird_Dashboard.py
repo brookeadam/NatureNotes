@@ -31,7 +31,7 @@ def main():
             response.raise_for_status()
             data = response.json()
             return pd.DataFrame({
-                "Date": pd.to_datetime(data.get("daily", {}).get("time", [])),
+                "Date": pd.to_datetime(data.get("daily", {}).get("time", [])).strftime("%Y-%m-%d"),
                 "temp_max": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_max", [])],
                 "temp_min": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_min", [])],
                 "precipitation": [(p * 0.0393701) if p is not None else None for p in data.get("daily", {}).get("precipitation_sum", [])]
@@ -82,22 +82,28 @@ def main():
             return pd.DataFrame()
 
         # ⭐ UNIVERSAL DATE PARSER — accepts ANY date format
+        parsed_dates = pd.to_datetime(
+            df[resolved["DATE"]].astype(str),
+            errors="coerce",
+            infer_datetime_format=True
+        )
+
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
-            "Date": pd.to_datetime(
-                df[resolved["DATE"]].astype(str),
-                errors="coerce",
-                infer_datetime_format=True
-            ),
+            "Date": parsed_dates,
             "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
 
+        # Drop invalid dates
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
         # ⭐ Deduplicate by Date + Species
         df_cleaned = df_cleaned.drop_duplicates(subset=["Date", "Species"], keep="first")
+
+        # ⭐ Format all dates as YYYY-MM-DD
+        df_cleaned["Date"] = df_cleaned["Date"].dt.strftime("%Y-%m-%d")
 
         return df_cleaned
     
@@ -117,21 +123,24 @@ def main():
     st.subheader("🆕 Latest Checklist 🆕")
     latest_date = ebird_df["Date"].max()
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
-    st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
+    st.write(f"**Checklist from:** {latest_date}")
     st.dataframe(latest_df[["Species", "Scientific Name", "Count"]], use_container_width=True, hide_index=True)
 
     # === Weather ===
-    weather_latest = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
+    weather_latest = fetch_weather_data(LATITUDE, LONGITUDE, datetime.datetime.strptime(latest_date, "%Y-%m-%d").date(), datetime.datetime.strptime(latest_date, "%Y-%m-%d").date())
     if not weather_latest.empty:
-        st.subheader(f"Weather for {latest_date.date()}")
+        st.subheader(f"Weather for {latest_date}")
         st.dataframe(weather_latest, use_container_width=True, hide_index=True)
 
     # === Filtered View ===
     st.subheader("⏱️ Filter by Single Date Range ⏱️")
-    d1 = st.date_input("Start Date", latest_date - datetime.timedelta(days=30))
-    d2 = st.date_input("End Date", latest_date)
+    d1 = st.date_input("Start Date", datetime.datetime.strptime(latest_date, "%Y-%m-%d").date() - datetime.timedelta(days=30))
+    d2 = st.date_input("End Date", datetime.datetime.strptime(latest_date, "%Y-%m-%d").date())
     
-    filtered = ebird_df[(ebird_df["Date"] >= pd.to_datetime(d1)) & (ebird_df["Date"] <= pd.to_datetime(d2))]
+    filtered = ebird_df[
+        (ebird_df["Date"] >= d1.strftime("%Y-%m-%d")) &
+        (ebird_df["Date"] <= d2.strftime("%Y-%m-%d"))
+    ]
     st.dataframe(filtered, use_container_width=True, hide_index=True)
 
     # === Filter by Two Date Ranges ===
@@ -147,8 +156,8 @@ def main():
     scientific_search = st.text_input("Search Scientific Name")
 
     filtered2 = ebird_df[
-        (ebird_df["Date"] >= pd.to_datetime(start_date)) &
-        (ebird_df["Date"] <= pd.to_datetime(end_date))
+        (ebird_df["Date"] >= start_date.strftime("%Y-%m-%d")) &
+        (ebird_df["Date"] <= end_date.strftime("%Y-%m-%d"))
     ].copy()
 
     if common_search:
@@ -170,28 +179,15 @@ def main():
     safe_end = min(end_date, datetime.date.today())
 
     weather_range = fetch_weather_data(LATITUDE, LONGITUDE, safe_start, safe_end)
-    weather_range = weather_range.dropna(subset=["temp_max", "temp_min"])
 
     if not weather_range.empty:
-        wc1, wc2 = st.columns(2)
-        with wc1:
-            max_row = weather_range.loc[weather_range["temp_max"].idxmax()]
-            st.metric(f"Max Temp (°F) on {max_row['Date'].date()}", f"{max_row['temp_max']:.2f}")
-        with wc2:
-            min_row = weather_range.loc[weather_range["temp_min"].idxmin()]
-            st.metric(f"Min Temp (°F) on {min_row['Date'].date()}", f"{min_row['temp_min']:.2f}")
-
         display_weather = weather_range.copy()
-        display_weather["Date"] = display_weather["Date"].dt.strftime("%Y-%m-%d")
-        display_weather = display_weather.rename(columns={
-            "temp_max": "Max Temp °F", "temp_min": "Min Temp °F", "precipitation": "Total Precip in"
-        })
         st.dataframe(display_weather, hide_index=True)
 
     # === Compare Specific Dates ===
     st.markdown("---")
     st.subheader("📝 Compare Specific Dates")
-    unique_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
+    unique_dates = sorted(ebird_df["Date"].unique(), reverse=True)
     colA, colB = st.columns(2)
     with colA:
         dateA = st.selectbox("Select Date A", unique_dates)
@@ -202,8 +198,8 @@ def main():
     sort_compare_order = st.radio("Comparison order", ["Ascending", "Descending"], horizontal=True)
 
     if st.button("Compare Dates"):
-        dfA = ebird_df[ebird_df["Date"].dt.date == dateA]
-        dfB = ebird_df[ebird_df["Date"].dt.date == dateB]
+        dfA = ebird_df[ebird_df["Date"] == dateA]
+        dfB = ebird_df[ebird_df["Date"] == dateB]
 
         merged = pd.merge(
             dfA.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count A"),
@@ -214,15 +210,6 @@ def main():
         merged["Difference"] = merged["Count B"] - merged["Count A"]
         merged = merged.sort_values(sort_compare, ascending=(sort_compare_order == "Ascending"))
         st.dataframe(merged, hide_index=True, use_container_width=True)
-
-        st.subheader("🌡️ Weather Comparison")
-        w_a = fetch_weather_data(LATITUDE, LONGITUDE, dateA, dateA)
-        w_b = fetch_weather_data(LATITUDE, LONGITUDE, dateB, dateB)
-        
-        st.write("**Date A Weather**")
-        st.dataframe(w_a.rename(columns={"temp_max": "Max Temp °F", "temp_min": "Min Temp °F"}), hide_index=True)
-        st.write("**Date B Weather**")
-        st.dataframe(w_b.rename(columns={"temp_max": "Max Temp °F", "temp_min": "Min Temp °F"}), hide_index=True)
 
     # === Footer ===
     st.markdown("---")
