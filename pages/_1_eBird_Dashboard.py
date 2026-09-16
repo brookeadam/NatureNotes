@@ -70,14 +70,18 @@ def main():
                 if opt in df.columns:
                     resolved[key] = opt
                     break
-        if len(resolved) < 5: return pd.DataFrame()
+        required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
+        if not all(r in resolved for r in required):
+        return pd.DataFrame()
+
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
             "Date": pd.to_datetime(df[resolved["DATE"]], errors="coerce"),
-            "Time": df[resolved["TIME"]],
+            "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
+
         return df_cleaned.dropna(subset=["Date"])
     
     # === HEADER ===
