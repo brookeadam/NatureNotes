@@ -82,7 +82,6 @@ def main():
         col_date = resolve_column(["DATE", "OBSERVATION DATE", "CHECKLIST DATE"])
         col_time = resolve_column(["TIME", "TIME OBSERVATIONS STARTED", "START TIME"])
 
-        # --- If any required column missing, show debug info ---
         if not all([col_species, col_sci, col_count, col_date]):
             st.error("Could not resolve required columns. Columns found:")
             st.write(df.columns.tolist())
@@ -95,36 +94,27 @@ def main():
             .str.strip()
             .str.replace("T", " ", regex=False)
             .str.replace("/", "-", regex=False)
-            .str.replace(r"[^\w\s\-:]", "", regex=True)  # remove BOM or weird chars
+            .str.replace(r"[^\w\s\-:]", "", regex=True)
         )
 
         parsed_dates = pd.to_datetime(date_series, errors="coerce")
 
-        # --- Build cleaned dataframe ---
         df_cleaned = pd.DataFrame({
-            "Species": df[col_species],
-            "Scientific Name": df[col_sci],
+            "Species": df[col_species].astype(str).str.strip(),
+            "Scientific Name": df[col_sci].astype(str).str.strip(),
             "Date": parsed_dates,
-            "Time": df[col_time] if col_time else None,
             "Count": pd.to_numeric(df[col_count], errors="coerce").fillna(0).astype(int)
         })
 
-        # --- Debug: show rows that failed date parsing ---
-        bad_dates = df_cleaned[df_cleaned["Date"].isna()]
-        if len(bad_dates) > 0:
-            st.warning("Some rows had invalid dates and were dropped. Showing first 20:")
-            st.write(bad_dates.head(20))
-
-        # --- Drop rows with invalid dates ---
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
         # --- Normalize species fields to ensure dedupe works ---
-        df_cleaned["Species"] = df_cleaned["Species"].astype(str).str.strip().str.upper()
-        df_cleaned["Scientific Name"] = df_cleaned["Scientific Name"].astype(str).str.strip().str.upper()
+        df_cleaned["Species"] = df_cleaned["Species"].str.upper()
+        df_cleaned["Scientific Name"] = df_cleaned["Scientific Name"].str.upper()
 
         # --- Remove duplicates: one species per date ---
         df_cleaned = df_cleaned.drop_duplicates(
-            subset=["Date", "Species", "Scientific Name"],
+            subset=["Date", "Species"],
             keep="first"
         )
 
@@ -137,8 +127,6 @@ def main():
     )
     
     # === Data Loading ===
-    MIN_DATE = datetime.date(1985, 1, 1)
-    MAX_DATE = datetime.date(2035, 12, 31)
     ebird_df = load_ebird_data_from_file()
     
     if ebird_df.empty:
@@ -148,7 +136,11 @@ def main():
     # === Latest Checklist ===
     st.subheader("🆕 Latest Checklist 🆕")
     latest_date = ebird_df["Date"].max()
+
+    # DEDUPE AGAIN HERE TO ENSURE DISPLAY IS CLEAN
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
+    latest_df = latest_df.drop_duplicates(subset=["Species"], keep="first")
+
     st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
     st.dataframe(
         latest_df[["Species", "Scientific Name", "Count"]],
@@ -171,6 +163,10 @@ def main():
         (ebird_df["Date"] >= pd.to_datetime(d1)) &
         (ebird_df["Date"] <= pd.to_datetime(d2))
     ]
+
+    # DEDUPE FILTERED VIEW TOO
+    filtered = filtered.drop_duplicates(subset=["Date", "Species"], keep="first")
+
     st.dataframe(filtered, use_container_width=True, hide_index=True)
 
     # === Footer ===
