@@ -51,12 +51,17 @@ def main():
     
     @st.cache_data
     def clean_ebird_data(df):
-        if df.empty: return df
+        if df.empty:
+            return df
+
+        # Handle tab-delimited files
         if len(df.columns) == 1 and "\t" in df.columns[0]:
             df = df.iloc[:, 0].str.split("\t", expand=True)
             df.columns = [c.strip() for c in df.iloc[0]]
             df = df.iloc[1:].reset_index(drop=True)
+
         df.columns = [c.strip().upper() for c in df.columns]
+
         column_map = {
             "SPECIES": ["COMMON NAME", "SPECIES"],
             "SCIENTIFIC NAME": ["SCIENTIFIC NAME"],
@@ -64,15 +69,18 @@ def main():
             "DATE": ["OBSERVATION DATE", "DATE"],
             "TIME": ["TIME OBSERVATIONS STARTED", "TIME"]
         }
+
         resolved = {}
         for key, options in column_map.items():
             for opt in options:
                 if opt in df.columns:
                     resolved[key] = opt
                     break
+
         required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
-    if not all(r in resolved for r in required):
-        return pd.DataFrame()
+        if not all(r in resolved for r in required):
+            return pd.DataFrame()
+
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
@@ -80,6 +88,7 @@ def main():
             "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
+
         return df_cleaned.dropna(subset=["Date"])
     
     # === HEADER ===
