@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import altair as alt
 import datetime
 import re
 from pathlib import Path
@@ -12,11 +13,8 @@ def main():
     LONGITUDE = -98.4798
     DATA_DIR = Path("data")
     EBIRD_DATA_FILE = Path("historical_checklists.csv")
-
-    MIN_DATE = datetime.date(1985, 1, 1)
-    MAX_DATE = datetime.date(2035, 12, 31)
-
-    # === Weather API ===
+    
+    # === API Fetch Functions ===
     @st.cache_data(ttl=3600)
     def fetch_weather_data(lat, lon, start, end):
         url = "https://archive-api.open-meteo.com/v1/archive"
@@ -34,19 +32,16 @@ def main():
             data = response.json()
             df = pd.DataFrame({
                 "Date": pd.to_datetime(data.get("daily", {}).get("time", [])),
-                "temp_max": [(t * 9/5 + 32) if t is not None else None
-                             for t in data.get("daily", {}).get("temperature_2m_max", [])],
-                "temp_min": [(t * 9/5 + 32) if t is not None else None
-                             for t in data.get("daily", {}).get("temperature_2m_min", [])],
-                "precipitation": [(p * 0.0393701) if p is not None else None
-                                  for p in data.get("daily", {}).get("precipitation_sum", [])]
+                "temp_max": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_max", [])],
+                "temp_min": [(t * 9/5 + 32) if t is not None else None for t in data.get("daily", {}).get("temperature_2m_min", [])],
+                "precipitation": [(p * 0.0393701) if p is not None else None for p in data.get("daily", {}).get("precipitation_sum", [])]
             })
             df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
             return df
         except Exception as e:
             st.error(f"Error fetching weather data: {e}")
             return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
-
+    
     # === Load eBird Data ===
     @st.cache_data
     def load_ebird_data_from_file():
@@ -61,11 +56,10 @@ def main():
         else:
             st.warning("eBird data file not found.")
             return pd.DataFrame()
-
-    # === Clean eBird Data (robust date parsing) ===
+    
+    # === Clean eBird Data ===
     @st.cache_data
-    def clean_ebird_data(df: pd.DataFrame) -> pd.DataFrame:
-        # Normalize column names
+    def clean_ebird_data(df):
         df.columns = [c.strip().upper() for c in df.columns]
 
         def col(*names):
@@ -81,11 +75,6 @@ def main():
         col_date = col("OBSERVATION DATE", "DATE")
         col_time = col("TIME OBSERVATIONS STARTED", "TIME")
 
-        required = [col_common, col_sci, col_count, col_date]
-        if any(c is None for c in required):
-            st.error("Required columns not found in eBird file.")
-            return pd.DataFrame()
-
         out = pd.DataFrame()
         if col_guid:
             out["GUID"] = df[col_guid]
@@ -95,17 +84,18 @@ def main():
 
         dates = df[col_date].astype(str)
 
-        # Extract REAL time using regex, ignore junk like "possible Broad-Winged Hawk"
+        # === THE FIX YOU REQUESTED ===
         time_pattern = re.compile(r"\d{1,2}:\d{2}:\d{2}\s*(AM|PM)", re.IGNORECASE)
         times = []
 
         if col_time:
-            for raw in df[col_time].astype(str):
+            for raw in df[col_time]:
+                raw = str(raw) if raw is not None else ""   # <--- THIS IS THE FIX
                 m = time_pattern.search(raw)
                 if m:
                     times.append(m.group(0))
                 else:
-                    times.append("")  # fallback: date only
+                    times.append("")
         else:
             times = [""] * len(df)
 
@@ -116,22 +106,23 @@ def main():
                     parsed.append(pd.to_datetime(f"{d} {t}", errors="coerce", infer_datetime_format=True))
                 else:
                     parsed.append(pd.to_datetime(d, errors="coerce", infer_datetime_format=True))
-            except Exception:
+            except:
                 parsed.append(pd.NaT)
 
         out["Date"] = parsed
         out = out.dropna(subset=["Date"])
-
-        # Deduplicate by Date + Species
         out = out.drop_duplicates(subset=["Date", "Species"], keep="first")
 
         return out
-
+    
     # === HEADER ===
     st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
-
+    
     # === Load Data ===
+    MIN_DATE = datetime.date(1985, 1, 1)
+    MAX_DATE = datetime.date(2035, 12, 31)
     ebird_df = load_ebird_data_from_file()
+    
     if ebird_df.empty:
         st.error("No eBird data found.")
         return
@@ -145,11 +136,7 @@ def main():
     latest_df_display["Date"] = latest_df_display["Date"].dt.strftime("%Y-%m-%d")
 
     st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
-    st.dataframe(
-        latest_df_display[["Species", "Scientific Name", "Count"]],
-        use_container_width=True,
-        hide_index=True
-    )
+    st.dataframe(latest_df_display[["Species", "Scientific Name", "Count"]], use_container_width=True, hide_index=True)
 
     # === Weather for Latest Date ===
     weather_latest = fetch_weather_data(
@@ -206,11 +193,8 @@ def main():
     sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
     filtered2_display = filtered2_display.sort_values(sort_col, ascending=(sort_order == "Ascending"))
 
-    st.dataframe(
-        filtered2_display[["Date", "Species", "Scientific Name", "Count"]],
-        hide_index=True,
-        use_container_width=True
-    )
+    st.dataframe(filtered2_display[["Date", "Species", "Scientific Name", "Count"]],
+                 hide_index=True, use_container_width=True)
 
     # === Weather for Filtered Range ===
     st.subheader("🌡️ Weather for Filtered Range")
@@ -243,8 +227,7 @@ def main():
         merged = pd.merge(
             dfA.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count A"),
             dfB.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count B"),
-            on=["Species", "Scientific Name"],
-            how="outer"
+            on=["Species", "Scientific Name"], how="outer"
         ).fillna(0)
 
         merged["Difference"] = merged["Count B"] - merged["Count A"]
@@ -254,10 +237,8 @@ def main():
 
     # === Footer ===
     st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>",
-        unsafe_allow_html=True
-    )
+    st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>", 
+unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
