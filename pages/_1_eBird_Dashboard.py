@@ -117,6 +117,10 @@ def main():
 
         # --- Drop rows with invalid dates ---
         df_cleaned = df_cleaned.dropna(subset=["Date"])
+        df_cleaned = df_cleaned.drop_duplicates(
+            subset=["Date", "Species", "Scientific Name"],
+            keep="first"
+)
 
         return df_cleaned
     
@@ -166,7 +170,7 @@ def main():
     # === Footer ===
     st.markdown("---")
     st.markdown(
-        "<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke 🌿</div>",
+        "<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>",
         unsafe_allow_html=True
     )
 
