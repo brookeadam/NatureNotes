@@ -81,27 +81,22 @@ def main():
         if not all(k in resolved for k in required):
             return pd.DataFrame()
 
-        # ⭐ FIX — bulletproof date parsing
-        cleaned_dates = (
-            df[resolved["DATE"]]
-            .astype(str)
-            .str.strip()
-            .str.replace("T", " ", regex=False)
-            .str.replace("/", "-", regex=False)
-            .str.replace(r"[^\w\s\-:]", "", regex=True)  # remove BOM, unicode, weird chars
-        )
-
+        # ⭐ UNIVERSAL DATE PARSER — accepts ANY date format
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
-            "Date": pd.to_datetime(cleaned_dates, errors="coerce"),
+            "Date": pd.to_datetime(
+                df[resolved["DATE"]].astype(str),
+                errors="coerce",
+                infer_datetime_format=True
+            ),
             "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
 
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
-        # ⭐ FIX — dedupe by Date + Species
+        # ⭐ Deduplicate by Date + Species
         df_cleaned = df_cleaned.drop_duplicates(subset=["Date", "Species"], keep="first")
 
         return df_cleaned
@@ -171,7 +166,6 @@ def main():
     # === Weather for Filtered Range ===
     st.subheader("🌡️ Weather for Filtered Range")
 
-    # ⭐ FIX — prevent invalid weather API range
     safe_start = max(start_date, datetime.date(2000, 1, 1))
     safe_end = min(end_date, datetime.date.today())
 
