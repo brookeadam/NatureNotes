@@ -47,7 +47,7 @@ def main():
     # -------------------------
     try:
         # Load the specific 2025 butterfly CSV
-        df = pd.read_csv("san_antonio_butterfly_counts_consolidated_2025.csv")
+        df = pd.read_csv("san_antonio_butterfly_counts_consolidated_2025.csv", sep="\t")
         df.columns = df.columns.str.strip().str.upper()
         df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
         df = df.dropna(subset=["DATE"])
