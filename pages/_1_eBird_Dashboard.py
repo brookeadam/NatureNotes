@@ -137,7 +137,6 @@ def main():
     st.subheader("🆕 Latest Checklist 🆕")
     latest_date = ebird_df["Date"].max()
 
-    # DEDUPE AGAIN HERE TO ENSURE DISPLAY IS CLEAN
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
     latest_df = latest_df.drop_duplicates(subset=["Species"], keep="first")
 
@@ -164,10 +163,48 @@ def main():
         (ebird_df["Date"] <= pd.to_datetime(d2))
     ]
 
-    # DEDUPE FILTERED VIEW TOO
     filtered = filtered.drop_duplicates(subset=["Date", "Species"], keep="first")
 
     st.dataframe(filtered, use_container_width=True, hide_index=True)
+
+    # === Comparison Section ===
+    st.markdown("<br><hr>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>📊 Comparison Between Dates</h2>", unsafe_allow_html=True)
+
+    available_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
+
+    if len(available_dates) >= 2:
+        date_a = available_dates[1]
+        date_b = available_dates[0]
+
+        st.markdown(
+            f"<p style='text-align: center;'>Comparing <b>{date_a}</b> (A) vs <b>{date_b}</b> (B)</p>",
+            unsafe_allow_html=True
+        )
+
+        df_a = ebird_df[ebird_df["Date"].dt.date == date_a].copy()
+        df_b = ebird_df[ebird_df["Date"].dt.date == date_b].copy()
+
+        df_a = df_a.drop_duplicates(subset=["Species"], keep="first")
+        df_b = df_b.drop_duplicates(subset=["Species"], keep="first")
+
+        df_a_grouped = df_a.groupby("Species")["Count"].sum()
+        df_b_grouped = df_b.groupby("Species")["Count"].sum()
+
+        comp_df = pd.DataFrame({
+            f"Count ({date_a})": df_a_grouped,
+            f"Count ({date_b})": df_b_grouped
+        }).fillna(0)
+
+        comp_df["Difference"] = comp_df[f"Count ({date_b})"] - comp_df[f"Count ({date_a})"]
+
+        _, cent_col, _ = st.columns([1, 6, 1])
+        with cent_col:
+            st.dataframe(
+                comp_df.sort_values("Difference", ascending=False),
+                use_container_width=True,
+                hide_index=True
+            )
 
     # === Footer ===
     st.markdown("---")
