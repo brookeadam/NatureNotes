@@ -117,8 +117,8 @@ def main():
 
         # --- Drop rows with invalid dates ---
         df_cleaned = df_cleaned.dropna(subset=["Date"])
-        df_cleaned = df_cleaned.drop_duplicates(
-            subset=["Date", "Species", "Scientific Name"],
+        df_cleaned = df_cleaned.sort_values(["Date", "Species"]).drop_duplicates(
+            subset=["Date", "Species"],
             keep="first"
 )
 
