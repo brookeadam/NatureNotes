@@ -84,7 +84,27 @@ def main():
         df_cleaned = pd.DataFrame({
             "Species": df[resolved["SPECIES"]],
             "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
-            "Date": pd.to_datetime(df[resolved["DATE"]], errors="coerce"),
+            resolved = {}
+        for key, options in column_map.items():
+            for opt in options:
+                if opt in df.columns:
+                    resolved[key] = opt
+                    break
+
+        required = ["SPECIES", "SCIENTIFIC NAME", "COUNT", "DATE"]
+        if not all(r in resolved for r in required):
+            return pd.DataFrame()
+
+        df_cleaned = pd.DataFrame({
+            "Species": df[resolved["SPECIES"]],
+            "Scientific Name": df[resolved["SCIENTIFIC NAME"]],
+            "Date": pd.to_datetime(
+                df[resolved["DATE"]]
+                    .astype(str)
+                    .str.strip()
+                    .str.replace("T", " ", regex=False)
+                    .str.replace("/", "-", regex=False),
+                errors="coerce"
             "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
