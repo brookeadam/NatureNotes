@@ -5,93 +5,77 @@ import datetime
 from pathlib import Path
 
 def main():
+    # === Constants ===
     EBIRD_DATA_FILE = Path("historical_checklists.csv")
     LATITUDE = 29.4689
     LONGITUDE = -98.4798
+    MIN_DATE = datetime.date(1985, 1, 1)
+    MAX_DATE = datetime.date(2035, 12, 31)
 
+    # === Load eBird data ===
     @st.cache_data
     def load_ebird_data_from_file():
         if not EBIRD_DATA_FILE.exists():
-            st.error("CSV file not found.")
+            st.error("eBird data file not found.")
             return pd.DataFrame()
 
-        rows = []
+        # Tab-delimited, with proper headers
+        df = pd.read_csv(
+            EBIRD_DATA_FILE,
+            sep="\t",
+            engine="python",
+            dtype=str
+        )
 
-        with open(EBIRD_DATA_FILE, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                parts = line.strip().split()
+        return clean_ebird_data(df)
 
-                # Skip empty lines
-                if len(parts) < 12:
-                    continue
+    @st.cache_data
+    def clean_ebird_data(df: pd.DataFrame) -> pd.DataFrame:
+        # Normalize column names
+        cols = {c.strip().upper(): c for c in df.columns}
 
-                # GUID is always first
-                guid = parts[0]
+        def get(colnames):
+            for name in colnames:
+                if name in cols:
+                    return cols[name]
+            return None
 
-                # Count is always the first integer after scientific name
-                # Location is always L#####
-                # Date is always M/D/YYYY
-                # Time is always H:MM:SS AM/PM
+        col_guid = get(["GLOBAL UNIQUE IDENTIFIER"])
+        col_common = get(["COMMON NAME"])
+        col_sci = get(["SCIENTIFIC NAME"])
+        col_count = get(["COUNT", "OBSERVATION COUNT"])
+        col_date = get(["OBSERVATION DATE", "DATE"])
+        col_time = get(["TIME OBSERVATIONS STARTED", "TIME"])
 
-                # Find the index of Count (first pure integer)
-                count_idx = None
-                for i in range(1, len(parts)):
-                    if parts[i].isdigit():
-                        count_idx = i
-                        break
+        required = [col_common, col_sci, col_count, col_date]
+        if any(c is None for c in required):
+            st.error("Required columns not found in eBird file.")
+            return pd.DataFrame()
 
-                if count_idx is None:
-                    continue
+        # Build cleaned frame
+        out = pd.DataFrame()
+        out["Species"] = df[col_common]
+        out["Scientific Name"] = df[col_sci]
 
-                # Species = words between GUID and scientific name
-                # Scientific name = two words before Count
-                sci_name = parts[count_idx - 2] + " " + parts[count_idx - 1]
+        # Parse count
+        out["Count"] = pd.to_numeric(df[col_count], errors="coerce").fillna(0).astype(int)
 
-                species = " ".join(parts[1:count_idx - 2])
+        # Parse date (and optional time)
+        if col_time is not None:
+            dt_str = df[col_date].astype(str) + " " + df[col_time].astype(str)
+            out["Date"] = pd.to_datetime(dt_str, errors="coerce", infer_datetime_format=True)
+        else:
+            out["Date"] = pd.to_datetime(df[col_date].astype(str), errors="coerce", infer_datetime_format=True)
 
-                count = int(parts[count_idx])
+        # Drop invalid dates
+        out = out.dropna(subset=["Date"])
 
-                # Location is next
-                location = parts[count_idx + 1]
+        # Deduplicate by Date + Species
+        out = out.drop_duplicates(subset=["Date", "Species"], keep="first")
 
-                # Date and Time
-                date = parts[count_idx + 2]
-                time = parts[count_idx + 3] + " " + parts[count_idx + 4]
+        return out
 
-                # Observer, Protocol, Duration, Distance, NumObservers
-                observer = parts[count_idx + 5]
-                protocol = parts[count_idx + 6]
-                duration = parts[count_idx + 7]
-                distance = parts[count_idx + 8]
-                numobs = parts[count_idx + 9]
-
-                rows.append({
-                    "GUID": guid,
-                    "Species": species,
-                    "Scientific Name": sci_name,
-                    "Count": count,
-                    "Location": location,
-                    "Date": date,
-                    "Time": time,
-                    "Observer": observer,
-                    "Protocol": protocol,
-                    "Duration": duration,
-                    "Distance": distance,
-                    "NumObservers": numobs
-                })
-
-        df = pd.DataFrame(rows)
-
-        # Parse datetime
-        df["Date"] = pd.to_datetime(df["Date"] + " " + df["Time"], errors="coerce")
-
-        df = df.dropna(subset=["Date"])
-        df["Count"] = pd.to_numeric(df["Count"], errors="coerce").fillna(0).astype(int)
-
-        df = df.drop_duplicates(subset=["Date", "Species"], keep="first")
-
-        return df
-
+    # === Weather ===
     @st.cache_data(ttl=3600)
     def fetch_weather_data(lat, lon, start, end):
         url = "https://archive-api.open-meteo.com/v1/archive"
@@ -114,38 +98,134 @@ def main():
                 "precipitation": [(p * 0.0393701) for p in data["daily"]["precipitation_sum"]]
             })
             return df
-        except:
+        except Exception:
             return pd.DataFrame()
 
-    df = load_ebird_data_from_file()
+    # === Header ===
+    st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
 
-    if df.empty:
-        st.error("No valid eBird data found.")
+    # === Load data ===
+    ebird_df = load_ebird_data_from_file()
+    if ebird_df.empty:
+        st.error("No eBird data found after cleaning.")
         return
 
-    # Latest checklist
-    latest_date = df["Date"].max()
-    latest_df = df[df["Date"] == latest_date].copy()
-    latest_df["Date"] = latest_df["Date"].dt.strftime("%Y-%m-%d")
+    # === Latest checklist ===
+    st.subheader("🆕 Latest Checklist 🆕")
+    latest_date = ebird_df["Date"].max()
+    latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
+    latest_df_display = latest_df.copy()
+    latest_df_display["Date"] = latest_df_display["Date"].dt.strftime("%Y-%m-%d")
 
-    st.subheader("Latest Checklist")
-    st.write(f"Date: {latest_date.strftime('%Y-%m-%d')}")
-    st.dataframe(latest_df[["Species", "Scientific Name", "Count"]], hide_index=True)
+    st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
+    st.dataframe(
+        latest_df_display[["Species", "Scientific Name", "Count"]],
+        use_container_width=True,
+        hide_index=True
+    )
 
-    # Weather
-    weather = fetch_weather_data(LATITUDE, LONGITUDE, latest_date.date(), latest_date.date())
-    if not weather.empty:
-        st.subheader("Weather")
-        st.dataframe(weather, hide_index=True)
+    # === Weather for latest date ===
+    weather_latest = fetch_weather_data(
+        LATITUDE, LONGITUDE,
+        latest_date.date(),
+        latest_date.date()
+    )
+    if not weather_latest.empty:
+        st.subheader(f"Weather for {latest_date.strftime('%Y-%m-%d')}")
+        st.dataframe(weather_latest, use_container_width=True, hide_index=True)
 
-    # Filters
-    st.subheader("Filter by Date Range")
-    start = st.date_input("Start", latest_date.date() - datetime.timedelta(days=30))
-    end = st.date_input("End", latest_date.date())
+    # === Single range filter ===
+    st.subheader("⏱️ Filter by Single Date Range ⏱️")
+    d1 = st.date_input("Start Date", latest_date.date() - datetime.timedelta(days=30))
+    d2 = st.date_input("End Date", latest_date.date())
 
-    filtered = df[(df["Date"] >= pd.to_datetime(start)) & (df["Date"] <= pd.to_datetime(end))].copy()
-    filtered["Date"] = filtered["Date"].dt.strftime("%Y-%m-%d")
-    st.dataframe(filtered, hide_index=True)
+    filtered = ebird_df[
+        (ebird_df["Date"] >= pd.to_datetime(d1)) &
+        (ebird_df["Date"] <= pd.to_datetime(d2))
+    ].copy()
+    filtered_display = filtered.copy()
+    filtered_display["Date"] = filtered_display["Date"].dt.strftime("%Y-%m-%d")
+
+    st.dataframe(filtered_display, use_container_width=True, hide_index=True)
+
+    # === Two-range + name filter ===
+    st.subheader("⏱️ Filter by Two Date Ranges")
+    col1, col2 = st.columns(2)
+    with col1:
+        start_date = st.date_input("Start Date (full range)", MIN_DATE)
+    with col2:
+        end_date = st.date_input("End Date (full range)", MAX_DATE)
+
+    st.subheader("🔍 Filter by Name")
+    common_search = st.text_input("Search Common Name")
+    scientific_search = st.text_input("Search Scientific Name")
+
+    filtered2 = ebird_df[
+        (ebird_df["Date"] >= pd.to_datetime(start_date)) &
+        (ebird_df["Date"] <= pd.to_datetime(end_date))
+    ].copy()
+
+    if common_search:
+        filtered2 = filtered2[filtered2["Species"].str.contains(common_search, case=False, na=False)]
+    if scientific_search:
+        filtered2 = filtered2[filtered2["Scientific Name"].str.contains(scientific_search, case=False, na=False)]
+
+    filtered2_display = filtered2.copy()
+    filtered2_display["Date"] = filtered2_display["Date"].dt.strftime("%Y-%m-%d")
+
+    sort_col = st.selectbox("Sort by", ["Date", "Species", "Scientific Name", "Count"])
+    sort_order = st.radio("Order", ["Ascending", "Descending"], horizontal=True)
+    filtered2_display = filtered2_display.sort_values(sort_col, ascending=(sort_order == "Ascending"))
+
+    st.dataframe(
+        filtered2_display[["Date", "Species", "Scientific Name", "Count"]],
+        hide_index=True,
+        use_container_width=True
+    )
+
+    # === Weather for filtered range ===
+    st.subheader("🌡️ Weather for Filtered Range")
+    safe_start = max(start_date, datetime.date(2000, 1, 1))
+    safe_end = min(end_date, datetime.date.today())
+    weather_range = fetch_weather_data(LATITUDE, LONGITUDE, safe_start, safe_end)
+    if not weather_range.empty:
+        st.dataframe(weather_range, hide_index=True)
+
+    # === Compare specific dates ===
+    st.markdown("---")
+    st.subheader("📝 Compare Specific Dates")
+    unique_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
+    colA, colB = st.columns(2)
+    with colA:
+        dateA = st.selectbox("Select Date A", unique_dates)
+    with colB:
+        dateB = st.selectbox("Select Date B", unique_dates)
+
+    sort_compare = st.selectbox("Sort comparison by", ["Species", "Scientific Name", "Count"])
+    sort_compare_order = st.radio("Comparison order", ["Ascending", "Descending"], horizontal=True)
+
+    if st.button("Compare Dates"):
+        dfA = ebird_df[ebird_df["Date"].dt.date == dateA]
+        dfB = ebird_df[ebird_df["Date"].dt.date == dateB]
+
+        merged = pd.merge(
+            dfA.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count A"),
+            dfB.groupby(["Species", "Scientific Name"])["Count"].sum().reset_index(name="Count B"),
+            on=["Species", "Scientific Name"],
+            how="outer"
+        ).fillna(0)
+
+        merged["Difference"] = merged["Count B"] - merged["Count A"]
+        merged = merged.sort_values(sort_compare, ascending=(sort_compare_order == "Ascending"))
+
+        st.dataframe(merged, hide_index=True, use_container_width=True)
+
+    # === Footer ===
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>",
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
