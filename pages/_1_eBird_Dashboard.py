@@ -81,7 +81,6 @@ def main():
             "Time": df[resolved["TIME"]] if "TIME" in resolved else None,
             "Count": pd.to_numeric(df[resolved["COUNT"]], errors="coerce").fillna(0).astype(int)
         })
-
         return df_cleaned.dropna(subset=["Date"])
     
     # === HEADER ===
