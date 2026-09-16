@@ -119,10 +119,10 @@ def main():
         df_cleaned = df_cleaned.dropna(subset=["Date"])
 
         # --- Remove duplicate observations per date (one species per date) ---
-        df_cleaned = df_cleaned.sort_values(["Date", "Species"]).drop_duplicates(
-            subset=["Date", "Species"],
+        df_cleaned = df_cleaned.drop_duplicates(
+            subset=["Date", "Species", "Scientific Name"],
             keep="first"
-        )        
+        )     
 
         return df_cleaned
     
