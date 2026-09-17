@@ -17,7 +17,7 @@ def main():
     # === DIAGNOSTIC BLOCK (correct location) ===
     st.write("DEBUG: File exists:", EBIRD_DATA_FILE.exists())
     try:
-        df_test = pd.read_csv(EBIRD_DATA_FILE, sep="\t", engine="python", dtype=str)
+        df_test = pd.read_csv(EBIRD_DATA_FILE, sep=",", engine="python", dtype=str)
         st.write("DEBUG: Loaded rows:", len(df_test))
         st.write("DEBUG: Headers:", list(df_test.columns))
         st.write("DEBUG: First 5 rows:", df_test.head())
@@ -58,7 +58,7 @@ def main():
         if EBIRD_DATA_FILE.exists():
             df = pd.read_csv(
                 EBIRD_DATA_FILE,
-                sep="\t",
+                sep=",",     # <--- FIXED HERE
                 engine="python",
                 dtype=str
             )
@@ -81,7 +81,7 @@ def main():
         col_guid = col("GLOBAL UNIQUE IDENTIFIER")
         col_common = col("COMMON NAME")
         col_sci = col("SCIENTIFIC NAME")
-        col_count = col("COUNT", "OBSERVATION COUNT")
+        col_count = col("OBSERVATION COUNT", "COUNT")
         col_date = col("OBSERVATION DATE", "DATE")
         col_time = col("TIME OBSERVATIONS STARTED", "TIME")
 
@@ -94,7 +94,7 @@ def main():
 
         dates = df[col_date].astype(str)
 
-        # === THE FIX ===
+        # === TIME FIX (kept exactly as before) ===
         time_pattern = re.compile(r"\d{1,2}:\d{2}:\d{2}\s*(AM|PM)", re.IGNORECASE)
         times = []
 
@@ -224,7 +224,7 @@ def main():
     with colA:
         dateA = st.selectbox("Select Date A", unique_dates)
     with colB:
-        dateB = st.selectbox("Select Date B", uniqueunique_dates)
+        dateB = st.selectbox("Select Date B", unique_dates)
 
     sort_compare = st.selectbox("Sort comparison by", ["Species", "Scientific Name", "Count"])
     sort_compare_order = st.radio("Comparison order", ["Ascending", "Descending"], horizontal=True)
