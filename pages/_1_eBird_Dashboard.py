@@ -14,7 +14,7 @@ def main():
     DATA_DIR = Path("data")
     EBIRD_DATA_FILE = Path("historical_checklists.csv")
 
-    # === DIAGNOSTIC BLOCK (correct location) ===
+    # === DIAGNOSTIC BLOCK ===
     st.write("DEBUG: File exists:", EBIRD_DATA_FILE.exists())
     try:
         df_test = pd.read_csv(EBIRD_DATA_FILE, sep=",", engine="python", dtype=str)
@@ -58,7 +58,7 @@ def main():
         if EBIRD_DATA_FILE.exists():
             df = pd.read_csv(
                 EBIRD_DATA_FILE,
-                sep=",",     # <--- FIXED HERE
+                sep=",",     # CSV confirmed
                 engine="python",
                 dtype=str
             )
@@ -70,7 +70,9 @@ def main():
     # === Clean eBird Data ===
     @st.cache_data
     def clean_ebird_data(df):
-        df.columns = [c.strip().upper() for c in df.columns]
+
+        # === BOM FIX (ONLY CHANGE YOU REQUESTED) ===
+        df.columns = df.columns.str.replace(r"^\ufeff", "", regex=True).str.strip().str.upper()
 
         def col(*names):
             for n in names:
@@ -100,7 +102,7 @@ def main():
 
         if col_time:
             for raw in df[col_time]:
-                raw = str(raw) if raw is not None else ""   # <--- FIX
+                raw = str(raw) if raw is not None else ""   # FIX
                 m = time_pattern.search(raw)
                 if m:
                     times.append(m.group(0))
