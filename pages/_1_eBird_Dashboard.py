@@ -153,14 +153,14 @@ def main():
         hide_index=True
     )
 
-    st.markdown("<h2 style='text-align:center;'>⏱️ Filter by Two Date Ranges</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>⏱️ Filter by Two Date Ranges ⏱️</h2>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input("Start Date", MIN_DATE)
     with col2:
         end_date = st.date_input("End Date", MAX_DATE)
 
-    st.markdown("<h2 style='text-align:center;'>🔍 Filter by Name</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>🔍 Filter by Name 🔍</h2>", unsafe_allow_html=True)
     common_search = st.text_input("Search Common Name")
     scientific_search = st.text_input("Search Scientific Name")
 
@@ -184,7 +184,7 @@ def main():
     st.dataframe(filtered2_display[["Date", "Species", "Scientific Name", "Count"]],
                  hide_index=True, use_container_width=True)
 
-    st.markdown("<h2 style='text-align:center;'>🌡️ Weather for Filtered Range</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>🌡️ Weather for Filtered Range 🌡️</h2>", unsafe_allow_html=True)
 
     safe_start = max(start_date, datetime.date(2000, 1, 1))
     safe_end = min(end_date, datetime.date.today())
@@ -195,7 +195,7 @@ def main():
         st.dataframe(weather_range, hide_index=True)
 
     st.markdown("---")
-    st.markdown("<h2 style='text-align:center;'>📝 Compare Specific Dates</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>📝 Compare Specific Dates 📝</h2>", unsafe_allow_html=True)
     unique_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
     colA, colB = st.columns(2)
     with colA:
