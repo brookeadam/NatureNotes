@@ -69,8 +69,6 @@ def main():
         col_time = col("TIME OBSERVATIONS STARTED", "TIME")
 
         out = pd.DataFrame()
-        if col_guid:
-            out["GUID"] = df[col_guid]
         out["Species"] = df[col_common]
         out["Scientific Name"] = df[col_sci]
         out["Count"] = pd.to_numeric(df[col_count], errors="coerce").fillna(0).astype(int)
