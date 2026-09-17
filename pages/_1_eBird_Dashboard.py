@@ -13,8 +13,18 @@ def main():
     LONGITUDE = -98.4798
     DATA_DIR = Path("data")
     EBIRD_DATA_FILE = Path("historical_checklists.csv")
-    
-    # === API Fetch Functions ===
+
+    # === DIAGNOSTIC BLOCK (correct location) ===
+    st.write("DEBUG: File exists:", EBIRD_DATA_FILE.exists())
+    try:
+        df_test = pd.read_csv(EBIRD_DATA_FILE, sep="\t", engine="python", dtype=str)
+        st.write("DEBUG: Loaded rows:", len(df_test))
+        st.write("DEBUG: Headers:", list(df_test.columns))
+        st.write("DEBUG: First 5 rows:", df_test.head())
+    except Exception as e:
+        st.write("DEBUG: Error loading file:", e)
+
+    # === Weather API ===
     @st.cache_data(ttl=3600)
     def fetch_weather_data(lat, lon, start, end):
         url = "https://archive-api.open-meteo.com/v1/archive"
@@ -41,7 +51,7 @@ def main():
         except Exception as e:
             st.error(f"Error fetching weather data: {e}")
             return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
-    
+
     # === Load eBird Data ===
     @st.cache_data
     def load_ebird_data_from_file():
@@ -56,7 +66,7 @@ def main():
         else:
             st.warning("eBird data file not found.")
             return pd.DataFrame()
-    
+
     # === Clean eBird Data ===
     @st.cache_data
     def clean_ebird_data(df):
@@ -84,13 +94,13 @@ def main():
 
         dates = df[col_date].astype(str)
 
-        # === THE FIX YOU REQUESTED ===
+        # === THE FIX ===
         time_pattern = re.compile(r"\d{1,2}:\d{2}:\d{2}\s*(AM|PM)", re.IGNORECASE)
         times = []
 
         if col_time:
             for raw in df[col_time]:
-                raw = str(raw) if raw is not None else ""   # <--- THIS IS THE FIX
+                raw = str(raw) if raw is not None else ""   # <--- FIX
                 m = time_pattern.search(raw)
                 if m:
                     times.append(m.group(0))
@@ -114,15 +124,14 @@ def main():
         out = out.drop_duplicates(subset=["Date", "Species"], keep="first")
 
         return out
-    
+
     # === HEADER ===
     st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
-    
-    # === Load Data ===
+
     MIN_DATE = datetime.date(1985, 1, 1)
     MAX_DATE = datetime.date(2035, 12, 31)
     ebird_df = load_ebird_data_from_file()
-    
+
     if ebird_df.empty:
         st.error("No eBird data found.")
         return
@@ -215,7 +224,7 @@ def main():
     with colA:
         dateA = st.selectbox("Select Date A", unique_dates)
     with colB:
-        dateB = st.selectbox("Select Date B", unique_dates)
+        dateB = st.selectbox("Select Date B", uniqueunique_dates)
 
     sort_compare = st.selectbox("Sort comparison by", ["Species", "Scientific Name", "Count"])
     sort_compare_order = st.radio("Comparison order", ["Ascending", "Descending"], horizontal=True)
@@ -239,15 +248,6 @@ def main():
     st.markdown("---")
     st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>", 
 unsafe_allow_html=True)
-
-st.write("File exists:", EBIRD_DATA_FILE.exists())
-try:
-    df_test = pd.read_csv(EBIRD_DATA_FILE, sep="\t", engine="python", dtype=str)
-    st.write("Loaded rows:", len(df_test))
-    st.write(df_test.head())
-except Exception as e:
-    st.write("Error loading file:", e)
-
 
 if __name__ == "__main__":
     main()
