@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(layout="wide")   # ⭐ FULL-PAGE WIDTH ENABLED
+
 import pandas as pd
 import requests
 from datetime import datetime
@@ -42,7 +44,6 @@ def main():
         df = pd.read_csv("san_antonio_butterfly_counts_consolidated_2025.csv", sep="\t")
         df.columns = df.columns.str.strip().str.upper()
 
-        # ⭐ CHANGE #1 — enforce YYYY-MM-DD format
         df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
         df = df.dropna(subset=["DATE"])
         df["DATE"] = df["DATE"].dt.strftime("%Y-%m-%d")
@@ -103,7 +104,6 @@ def main():
 
         st.markdown(f"<p style='text-align: center;'>Comparing <b>{date_a}</b> (A) vs <b>{date_b}</b> (B)</p>", unsafe_allow_html=True)
 
-        # ⭐ CHANGE #2 — include scientific name in grouping
         df_a = df[pd.to_datetime(df["DATE"]).dt.date == date_a].groupby(
             ["COMMON NAME", "SCIENTIFIC NAME"]
         )["COUNT"].sum()
@@ -118,24 +118,20 @@ def main():
         }).fillna(0)
 
         comp_df["Difference"] = comp_df[f"Count ({date_b})"] - comp_df[f"Count ({date_a})"]
-
-        # Reset index so Common Name + Scientific Name appear as columns
         comp_df = comp_df.reset_index()
 
-        _, cent_col, _ = st.columns([1, 6, 1])
-        with cent_col:
-            st.dataframe(
-                comp_df.sort_values("Difference", ascending=False),
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "COMMON NAME": st.column_config.TextColumn(width="300px"),
-                    "SCIENTIFIC NAME": st.column_config.TextColumn(width="300px"),
-                    f"Count ({date_a})": st.column_config.NumberColumn(width="150px"),
-                    f"Count ({date_b})": st.column_config.NumberColumn(width="150px"),
-                    "Difference": st.column_config.NumberColumn(width="150px")
-                }
-            )
+        st.dataframe(
+            comp_df.sort_values("Difference", ascending=False),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "COMMON NAME": st.column_config.TextColumn(width="350px"),
+                "SCIENTIFIC NAME": st.column_config.TextColumn(width="350px"),
+                f"Count ({date_a})": st.column_config.NumberColumn(width="200px"),
+                f"Count ({date_b})": st.column_config.NumberColumn(width="200px"),
+                "Difference": st.column_config.NumberColumn(width="200px")
+            }
+        )
 
     st.markdown("---")
     st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Headwaters at Incarnate Word. Developed by Brooke Adam 🌿</div>", unsafe_allow_html=True)
