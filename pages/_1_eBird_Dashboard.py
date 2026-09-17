@@ -240,5 +240,14 @@ def main():
     st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>", 
 unsafe_allow_html=True)
 
+st.write("File exists:", EBIRD_DATA_FILE.exists())
+try:
+    df_test = pd.read_csv(EBIRD_DATA_FILE, sep="\t", engine="python", dtype=str)
+    st.write("Loaded rows:", len(df_test))
+    st.write(df_test.head())
+except Exception as e:
+    st.write("Error loading file:", e)
+
+
 if __name__ == "__main__":
     main()
