@@ -7,24 +7,12 @@ import re
 from pathlib import Path
 
 def main():
-    # === Constants ===
     HEADWATERS_LOCATIONS = ["L1210588", "L1210849"]
     LATITUDE = 29.4689
     LONGITUDE = -98.4798
     DATA_DIR = Path("data")
     EBIRD_DATA_FILE = Path("historical_checklists.csv")
 
-    # === DIAGNOSTIC BLOCK ===
-    st.write("DEBUG: File exists:", EBIRD_DATA_FILE.exists())
-    try:
-        df_test = pd.read_csv(EBIRD_DATA_FILE, sep=",", engine="python", dtype=str)
-        st.write("DEBUG: Loaded rows:", len(df_test))
-        st.write("DEBUG: Headers:", list(df_test.columns))
-        st.write("DEBUG: First 5 rows:", df_test.head())
-    except Exception as e:
-        st.write("DEBUG: Error loading file:", e)
-
-    # === Weather API ===
     @st.cache_data(ttl=3600)
     def fetch_weather_data(lat, lon, start, end):
         url = "https://archive-api.open-meteo.com/v1/archive"
@@ -48,11 +36,9 @@ def main():
             })
             df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
             return df
-        except Exception as e:
-            st.error(f"Error fetching weather data: {e}")
+        except Exception:
             return pd.DataFrame(columns=["Date", "temp_max", "temp_min", "precipitation"])
 
-    # === Load eBird Data ===
     @st.cache_data
     def load_ebird_data_from_file():
         if EBIRD_DATA_FILE.exists():
@@ -64,15 +50,11 @@ def main():
             )
             return clean_ebird_data(df)
         else:
-            st.warning("eBird data file not found.")
             return pd.DataFrame()
 
-    # === Clean eBird Data ===
     @st.cache_data
     def clean_ebird_data(df):
-
-        # === FINAL BOM FIX (PyArrow-safe) ===
-        df.columns = pd.Index([str(c).replace("\ufeff", "").strip().upper() for c in df.columns])
+        df.columns = [str(c).replace("\ufeff", "").strip().upper() for c in df.columns]
 
         def col(*names):
             for n in names:
@@ -96,7 +78,6 @@ def main():
 
         dates = df[col_date].astype(str)
 
-        # === TIME FIX ===
         time_pattern = re.compile(r"\d{1,2}:\d{2}:\d{2}\s*(AM|PM)", re.IGNORECASE)
         times = []
 
@@ -115,9 +96,9 @@ def main():
         for d, t in zip(dates, times):
             try:
                 if t:
-                    parsed.append(pd.to_datetime(f"{d} {t}", errors="coerce", infer_datetime_format=True))
+                    parsed.append(pd.to_datetime(f"{d} {t}", errors="coerce"))
                 else:
-                    parsed.append(pd.to_datetime(d, errors="coerce", infer_datetime_format=True))
+                    parsed.append(pd.to_datetime(d, errors="coerce"))
             except:
                 parsed.append(pd.NaT)
 
@@ -127,7 +108,6 @@ def main():
 
         return out
 
-    # === HEADER ===
     st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
 
     MIN_DATE = datetime.date(1985, 1, 1)
@@ -138,7 +118,6 @@ def main():
         st.error("No eBird data found.")
         return
 
-    # === Latest Checklist ===
     st.subheader("🆕 Latest Checklist 🆕")
     latest_date = ebird_df["Date"].max()
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
@@ -149,7 +128,6 @@ def main():
     st.write(f"**Checklist from:** {latest_date.strftime('%Y-%m-%d')}")
     st.dataframe(latest_df_display[["Species", "Scientific Name", "Count"]], use_container_width=True, hide_index=True)
 
-    # === Weather for Latest Date ===
     weather_latest = fetch_weather_data(
         LATITUDE, LONGITUDE,
         latest_date.date(),
@@ -160,7 +138,6 @@ def main():
         st.subheader(f"Weather for {latest_date.strftime('%Y-%m-%d')}")
         st.dataframe(weather_latest, use_container_width=True, hide_index=True)
 
-    # === Filter by Single Date Range ===
     st.subheader("⏱️ Filter by Single Date Range ⏱️")
     d1 = st.date_input("Start Date", latest_date.date() - datetime.timedelta(days=30))
     d2 = st.date_input("End Date", latest_date.date())
@@ -175,7 +152,6 @@ def main():
 
     st.dataframe(filtered_display, use_container_width=True, hide_index=True)
 
-    # === Filter by Two Date Ranges ===
     st.subheader("⏱️ Filter by Two Date Ranges")
     col1, col2 = st.columns(2)
     with col1:
@@ -207,7 +183,6 @@ def main():
     st.dataframe(filtered2_display[["Date", "Species", "Scientific Name", "Count"]],
                  hide_index=True, use_container_width=True)
 
-    # === Weather for Filtered Range ===
     st.subheader("🌡️ Weather for Filtered Range")
 
     safe_start = max(start_date, datetime.date(2000, 1, 1))
@@ -218,7 +193,6 @@ def main():
     if not weather_range.empty:
         st.dataframe(weather_range, hide_index=True)
 
-    # === Compare Specific Dates ===
     st.markdown("---")
     st.subheader("📝 Compare Specific Dates")
     unique_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
@@ -246,10 +220,9 @@ def main():
 
         st.dataframe(merged, hide_index=True, use_container_width=True)
 
-    # === Footer ===
     st.markdown("---")
-    st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>", 
-unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: gray;'>Nature Notes • Developed with ❤️ by Brooke Adam 🌿</div>",
+                unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
