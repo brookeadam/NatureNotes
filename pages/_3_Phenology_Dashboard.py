@@ -127,7 +127,7 @@ def main():
         })
         st.dataframe(display_latest_weather, hide_index=True)
 
-    st.subheader("⏱️ Filter by Date Range")
+    st.subheader("⏱️ Filter by Date Range ⏱️")
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input("Start Date", MIN_DATE)
@@ -138,7 +138,7 @@ def main():
     locations = sorted(df["Location"].dropna().unique())
     selected_locations = st.multiselect("Choose locations:", locations, default=locations)
 
-    st.subheader("🌱 Filter by Category")
+    st.subheader("🌱 Filter by Category 🌱")
     categories = sorted(df["Category"].dropna().unique())
     selected_categories = st.multiselect("Choose categories:", categories, default=categories)
 
