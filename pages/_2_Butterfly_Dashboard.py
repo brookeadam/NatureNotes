@@ -96,7 +96,7 @@ def main():
                 st.info("Weather data unavailable for this date.")
 
     st.markdown("<br><hr>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center;'>📊 Comparison Between Dates</h2> 📊", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>📊 Comparison Between Dates 📊</h2>", unsafe_allow_html=True)
 
     if len(available_dates) >= 2:
         date_a = available_dates[1]
