@@ -37,7 +37,7 @@ def fetch_weather_data(lat, lon, date_obj):
 
 def main():
 
-    st.markdown("<h1 style='text-align: center;'>🌳 Nature Notes: Headwaters at Incarnate Word 🌳</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🦋 Headwaters Butterfly Dashboard 🦋</h1>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center; color: gray;'>Explore butterfly sightings and weather patterns side-by-side.</h4>", unsafe_allow_html=True)
 
     try:
@@ -83,12 +83,12 @@ def main():
         col_list, col_weather = st.columns([2, 1])
 
         with col_list:
-            st.subheader(f"🦋 Butterfly List ({selected_date})")
+            st.subheader(f"🦋 Butterfly List ({selected_date}) 🦋")
             display_list = checklist_df[["COMMON NAME", "SCIENTIFIC NAME", "COUNT"]].sort_values("COUNT", ascending=False)
             st.dataframe(display_list, use_container_width=True, hide_index=True)
 
         with col_weather:
-            st.subheader("🌡️ Weather Conditions")
+            st.subheader("🌡️ Weather Conditions 🌡️")
             weather_data = fetch_weather_data(LATITUDE, LONGITUDE, selected_date)
             if not weather_data.empty:
                 st.table(weather_data.T.rename(columns={0: "Value"}))
@@ -96,7 +96,7 @@ def main():
                 st.info("Weather data unavailable for this date.")
 
     st.markdown("<br><hr>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center;'>📊 Comparison Between Dates</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>📊 Comparison Between Dates</h2> 📊", unsafe_allow_html=True)
 
     if len(available_dates) >= 2:
         date_a = available_dates[1]
