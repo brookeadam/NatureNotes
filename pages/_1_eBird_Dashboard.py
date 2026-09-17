@@ -62,7 +62,6 @@ def main():
                     return n
             return None
 
-        col_guid = col("GLOBAL UNIQUE IDENTIFIER")
         col_common = col("COMMON NAME")
         col_sci = col("SCIENTIFIC NAME")
         col_count = col("OBSERVATION COUNT", "COUNT")
