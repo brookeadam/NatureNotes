@@ -115,7 +115,7 @@ def main():
         st.error("No eBird data found.")
         return
 
-    st.subheader("🆕 Latest Checklist 🆕")
+    st.markdown("<h2 style='text-align:center;'>🆕 Latest Checklist 🆕</h2>", unsafe_allow_html=True)
     latest_date = ebird_df["Date"].max()
     latest_df = ebird_df[ebird_df["Date"] == latest_date].copy()
 
@@ -132,10 +132,10 @@ def main():
     )
 
     if not weather_latest.empty:
-        st.subheader(f"Weather for {latest_date.strftime('%Y-%m-%d')}")
+        st.markdown(f"<h2 style='text-align:center;'>Weather for {latest_date.strftime('%Y-%m-%d')}</h2>", unsafe_allow_html=True)
         st.dataframe(weather_latest, use_container_width=True, hide_index=True)
 
-    st.subheader("⏱️ Filter by Single Date Range ⏱️")
+    st.markdown("<h2 style='text-align:center;'>⏱️ Filter by Single Date Range ⏱️</h2>", unsafe_allow_html=True)
     d1 = st.date_input("Start Date", latest_date.date() - datetime.timedelta(days=30))
     d2 = st.date_input("End Date", latest_date.date())
 
@@ -147,21 +147,20 @@ def main():
     filtered_display = filtered.copy()
     filtered_display["Date"] = filtered_display["Date"].dt.strftime("%Y-%m-%d")
 
-    # ⭐ ONLY CHANGE YOU REQUESTED ⭐
     st.dataframe(
         filtered_display[["Date", "Species", "Scientific Name", "Count"]],
         use_container_width=True,
         hide_index=True
     )
 
-    st.subheader("⏱️ Filter by Two Date Ranges")
+    st.markdown("<h2 style='text-align:center;'>⏱️ Filter by Two Date Ranges</h2>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input("Start Date", MIN_DATE)
     with col2:
         end_date = st.date_input("End Date", MAX_DATE)
 
-    st.subheader("🔍 Filter by Name")
+    st.markdown("<h2 style='text-align:center;'>🔍 Filter by Name</h2>", unsafe_allow_html=True)
     common_search = st.text_input("Search Common Name")
     scientific_search = st.text_input("Search Scientific Name")
 
@@ -185,7 +184,7 @@ def main():
     st.dataframe(filtered2_display[["Date", "Species", "Scientific Name", "Count"]],
                  hide_index=True, use_container_width=True)
 
-    st.subheader("🌡️ Weather for Filtered Range")
+    st.markdown("<h2 style='text-align:center;'>🌡️ Weather for Filtered Range</h2>", unsafe_allow_html=True)
 
     safe_start = max(start_date, datetime.date(2000, 1, 1))
     safe_end = min(end_date, datetime.date.today())
@@ -196,7 +195,7 @@ def main():
         st.dataframe(weather_range, hide_index=True)
 
     st.markdown("---")
-    st.subheader("📝 Compare Specific Dates")
+    st.markdown("<h2 style='text-align:center;'>📝 Compare Specific Dates</h2>", unsafe_allow_html=True)
     unique_dates = sorted(ebird_df["Date"].dt.date.unique(), reverse=True)
     colA, colB = st.columns(2)
     with colA:
