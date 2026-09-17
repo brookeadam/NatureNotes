@@ -58,7 +58,7 @@ def main():
         if EBIRD_DATA_FILE.exists():
             df = pd.read_csv(
                 EBIRD_DATA_FILE,
-                sep=",",     # CSV confirmed
+                sep=",",
                 engine="python",
                 dtype=str
             )
@@ -71,8 +71,8 @@ def main():
     @st.cache_data
     def clean_ebird_data(df):
 
-        # === BOM FIX (ONLY CHANGE YOU REQUESTED) ===
-        df.columns = df.columns.str.replace(r"^\ufeff", "", regex=True).str.strip().str.upper()
+        # === FINAL BOM FIX (PyArrow-safe) ===
+        df.columns = pd.Index([str(c).replace("\ufeff", "").strip().upper() for c in df.columns])
 
         def col(*names):
             for n in names:
@@ -96,13 +96,13 @@ def main():
 
         dates = df[col_date].astype(str)
 
-        # === TIME FIX (kept exactly as before) ===
+        # === TIME FIX ===
         time_pattern = re.compile(r"\d{1,2}:\d{2}:\d{2}\s*(AM|PM)", re.IGNORECASE)
         times = []
 
         if col_time:
             for raw in df[col_time]:
-                raw = str(raw) if raw is not None else ""   # FIX
+                raw = str(raw) if raw is not None else ""
                 m = time_pattern.search(raw)
                 if m:
                     times.append(m.group(0))
