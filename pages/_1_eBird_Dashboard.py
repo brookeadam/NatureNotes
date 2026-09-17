@@ -147,7 +147,12 @@ def main():
     filtered_display = filtered.copy()
     filtered_display["Date"] = filtered_display["Date"].dt.strftime("%Y-%m-%d")
 
-    st.dataframe(filtered_display, use_container_width=True, hide_index=True)
+    # ⭐ ONLY CHANGE YOU REQUESTED ⭐
+    st.dataframe(
+        filtered_display[["Date", "Species", "Scientific Name", "Count"]],
+        use_container_width=True,
+        hide_index=True
+    )
 
     st.subheader("⏱️ Filter by Two Date Ranges")
     col1, col2 = st.columns(2)
